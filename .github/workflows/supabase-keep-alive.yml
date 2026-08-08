@@ -1,0 +1,21 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    - cron: "30 12 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Mantener Supabase activo
+        run: |
+          curl -s \
+          -o /dev/null \
+          -w "%{http_code}" \
+          "${{ secrets.SUPABASE_URL }}/rest/v1/iglesias?select=id&limit=1" \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
