@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
+  color: #111827;
+  background: #f8fafc;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #f8fafc;
+}
+/* =========================================
+   QR - IMPRESIÓN
+========================================= */
+
+.qr-impresion {
+  display: none;
+}
+
+
+/* =========================================
+   SOLO IMPRESIÓN
+========================================= */
+
+@media print {
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 210mm !important;
+    height: 297mm !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    overflow: hidden !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  /* Ocultamos completamente la pantalla normal */
+
+  .qr-pantalla {
+    display: none !important;
+  }
+
+  /* Mostramos SOLO la hoja del QR */
+
+  .qr-impresion {
+    display: flex !important;
+
+    width: 210mm !important;
+    height: 297mm !important;
+
+    max-height: 297mm !important;
+
+    box-sizing: border-box;
+
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden !important;
+
+    background: white !important;
+  }
+
+  .qr-hoja {
+    width: 100%;
+    height: 100%;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+
+    padding: 20mm;
+  }
+
+  .qr-logo {
+    font-size: 18px;
+    font-weight: 700;
+
+    letter-spacing: 5px;
+
+    color: #475569;
+  }
+
+  .qr-hoja h1 {
+    margin: 20px 0 0 0;
+
+    font-size: 46px;
+    line-height: 1.1;
+
+    font-weight: 800;
+
+    color: #000;
+  }
+
+  .qr-codigo {
+    margin-top: 10px;
+
+    font-size: 20px;
+
+    color: #64748b;
+  }
+
+  .qr-codigo-box {
+    margin-top: 35px;
+
+    padding: 15px;
+
+    background: white;
+  }
+
+  .qr-texto {
+    max-width: 420px;
+
+    margin-top: 25px;
+
+    font-size: 17px;
+    line-height: 1.5;
+
+    color: #475569;
+  }
+
+  .qr-url {
+    margin-top: 25px;
+
+    font-size: 11px;
+
+    letter-spacing: 3px;
+
+    color: #94a3b8;
+  }
+}
