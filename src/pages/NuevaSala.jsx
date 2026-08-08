@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+
 import {
   ArrowLeft,
   Camera,
@@ -12,6 +13,8 @@ import {
   FileText,
   School,
   Trash2,
+  Image as ImageIcon,
+  RotateCcw,
 } from "lucide-react";
 
 import { Link, useNavigate } from "react-router-dom";
@@ -20,12 +23,27 @@ import { supabase } from "../lib/supabase";
 
 export default function NuevaSala() {
   const navigate = useNavigate();
-  const inputFotoRef = useRef(null);
+
+  // =====================================================
+  // REFERENCIAS
+  // =====================================================
+
+  const inputGaleriaRef = useRef(null);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  // =====================================================
+  // ESTADOS
+  // =====================================================
 
   const [guardando, setGuardando] = useState(false);
 
   const [foto, setFoto] = useState(null);
   const [preview, setPreview] = useState(null);
+
+  const [camaraAbierta, setCamaraAbierta] = useState(false);
+  const [tipoCamara, setTipoCamara] = useState("environment");
 
   const [iglesias, setIglesias] = useState([]);
   const [iglesiasSeleccionadas, setIglesiasSeleccionadas] = useState([]);
@@ -51,10 +69,16 @@ export default function NuevaSala() {
     observaciones: "",
   });
 
+  // =====================================================
+  // CARGAR CATÁLOGOS
+  // =====================================================
+
   useEffect(() => {
     cargarCatalogos();
 
     return () => {
+      detenerCamara();
+
       if (preview) {
         URL.revokeObjectURL(preview);
       }
@@ -109,7 +133,7 @@ export default function NuevaSala() {
   };
 
   // =====================================================
-  // FOTO
+  // FOTO DESDE GALERÍA / ARCHIVO
   // =====================================================
 
   const handleFoto = (e) => {
@@ -121,6 +145,15 @@ export default function NuevaSala() {
 
     if (!archivo.type.startsWith("image/")) {
       alert("Selecciona una imagen válida.");
+      e.target.value = "";
+      return;
+    }
+
+    const maxSize = 10 * 1024 * 1024;
+
+    if (archivo.size > maxSize) {
+      alert("La imagen no puede superar los 10 MB.");
+      e.target.value = "";
       return;
     }
 
@@ -131,11 +164,192 @@ export default function NuevaSala() {
     }
 
     setPreview(URL.createObjectURL(archivo));
+
+    e.target.value = "";
   };
 
-  const abrirCamara = () => {
-    inputFotoRef.current?.click();
+  // =====================================================
+  // ABRIR GALERÍA
+  // =====================================================
+
+  const abrirGaleria = () => {
+    inputGaleriaRef.current?.click();
   };
+
+  // =====================================================
+  // DETENER CÁMARA
+  // =====================================================
+
+  const detenerCamara = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  // =====================================================
+  // ABRIR CÁMARA
+  // environment = trasera
+  // user        = frontal
+  // =====================================================
+
+  const abrirCamara = async (tipo = "environment") => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Tu navegador no permite acceder a la cámara.");
+        return;
+      }
+
+      detenerCamara();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: {
+            ideal: tipo,
+          },
+          width: {
+            ideal: 1920,
+          },
+          height: {
+            ideal: 1080,
+          },
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+
+      setTipoCamara(tipo);
+      setCamaraAbierta(true);
+
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+
+          videoRef.current.play().catch((error) => {
+            console.error("Error reproduciendo cámara:", error);
+          });
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Error accediendo a la cámara:", error);
+
+      if (error?.name === "NotAllowedError") {
+        alert("Debes permitir el acceso a la cámara en Chrome.");
+        return;
+      }
+
+      if (error?.name === "NotFoundError") {
+        alert("No se encontró ninguna cámara en este dispositivo.");
+        return;
+      }
+
+      if (error?.name === "NotReadableError") {
+        alert("La cámara está siendo utilizada por otra aplicación.");
+        return;
+      }
+
+      alert("No fue posible acceder a la cámara.");
+    }
+  };
+
+  // =====================================================
+  // CERRAR CÁMARA
+  // =====================================================
+
+  const cerrarCamara = () => {
+    detenerCamara();
+    setCamaraAbierta(false);
+  };
+
+  // =====================================================
+  // CAMBIAR CÁMARA
+  // =====================================================
+
+  const cambiarCamara = async () => {
+    const nuevaCamara = tipoCamara === "environment" ? "user" : "environment";
+
+    await abrirCamara(nuevaCamara);
+  };
+
+  // =====================================================
+  // TOMAR FOTO DESDE LA CÁMARA
+  // =====================================================
+
+  const tomarFoto = () => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      alert("La cámara todavía no está lista.");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+
+    canvas.width = video.videoWidth;
+
+    canvas.height = video.videoHeight;
+
+    const contexto = canvas.getContext("2d");
+
+    if (!contexto) {
+      return;
+    }
+
+    /*
+      Si es cámara frontal,
+      espejamos la imagen.
+    */
+
+    if (tipoCamara === "user") {
+      contexto.translate(canvas.width, 0);
+
+      contexto.scale(-1, 1);
+    }
+
+    contexto.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          return;
+        }
+
+        const archivo = new File([blob], `sala-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+
+        setFoto(archivo);
+
+        if (preview) {
+          URL.revokeObjectURL(preview);
+        }
+
+        const nuevaPreview = URL.createObjectURL(archivo);
+
+        setPreview(nuevaPreview);
+
+        cerrarCamara();
+      },
+      "image/jpeg",
+      0.9,
+    );
+  };
+
+  // =====================================================
+  // ELIMINAR FOTO
+  // =====================================================
 
   const eliminarFoto = () => {
     setFoto(null);
@@ -146,8 +360,8 @@ export default function NuevaSala() {
 
     setPreview(null);
 
-    if (inputFotoRef.current) {
-      inputFotoRef.current.value = "";
+    if (inputGaleriaRef.current) {
+      inputGaleriaRef.current.value = "";
     }
   };
 
@@ -204,7 +418,7 @@ export default function NuevaSala() {
         ];
       }
 
-      const nuevaCantidad = Math.max(existe.cantidad + cambio, 0);
+      const nuevaCantidad = Math.max(Number(existe.cantidad || 0) + cambio, 0);
 
       if (nuevaCantidad === 0) {
         return prev.filter((item) => item.tipo_inventario_id !== tipoId);
@@ -329,7 +543,7 @@ export default function NuevaSala() {
   };
 
   // =====================================================
-  // GUARDAR
+  // GUARDAR SALA
   // =====================================================
 
   const guardarSala = async () => {
@@ -344,10 +558,15 @@ export default function NuevaSala() {
         .from("salas")
         .insert({
           nombre: formulario.nombre.trim() || null,
+
           codigo: formulario.codigo.trim() || null,
+
           ubicacion: formulario.ubicacion.trim() || null,
+
           piso: formulario.piso.trim() || null,
+
           responsable: formulario.responsable.trim() || null,
+
           observaciones: formulario.observaciones.trim() || null,
         })
         .select()
@@ -358,19 +577,17 @@ export default function NuevaSala() {
       }
 
       // -----------------------------------------------
-      // 2. SUBIR FOTO
+      // 2. SUBIR FOTO SI EXISTE
       // -----------------------------------------------
 
       if (foto) {
-        const extension = foto.name.split(".").pop()?.toLowerCase() || "jpg";
-
-        const ruta = `salas/${sala.id}/sala.${extension}`;
+        const ruta = `salas/${sala.id}/sala.jpg`;
 
         const { error: uploadError } = await supabase.storage
           .from("salas")
           .upload(ruta, foto, {
             upsert: true,
-            contentType: foto.type,
+            contentType: "image/jpeg",
           });
 
         if (uploadError) {
@@ -402,6 +619,7 @@ export default function NuevaSala() {
       if (iglesiasSeleccionadas.length > 0) {
         const registros = iglesiasSeleccionadas.map((iglesiaId) => ({
           sala_id: sala.id,
+
           iglesia_id: iglesiaId,
         }));
 
@@ -419,12 +637,16 @@ export default function NuevaSala() {
       // -----------------------------------------------
 
       const inventarioGuardar = inventario
-        .filter((item) => item.cantidad > 0)
+        .filter((item) => Number(item.cantidad || 0) > 0)
         .map((item) => ({
           sala_id: sala.id,
+
           tipo_inventario_id: item.tipo_inventario_id || null,
+
           nombre_personalizado: item.nombre_personalizado || null,
-          cantidad: item.cantidad,
+
+          cantidad: Number(item.cantidad || 0),
+
           observacion: item.observacion || null,
         }));
 
@@ -458,7 +680,9 @@ export default function NuevaSala() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      {/* ================================================= */}
       {/* HEADER */}
+      {/* ================================================= */}
 
       <div className="mx-auto mb-8 flex max-w-4xl items-center gap-4">
         <Link
@@ -532,64 +756,147 @@ export default function NuevaSala() {
           <SectionTitle
             icon={<Camera size={19} />}
             title="Fotografía de la sala"
-            subtitle="Una fotografía ayuda a identificar cómo quedó la sala"
+            subtitle="Puedes tomar una fotografía o elegirla desde el dispositivo"
           />
 
+          {/* SOLO GALERÍA / ARCHIVO */}
+
           <input
-            ref={inputFotoRef}
+            ref={inputGaleriaRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={handleFoto}
           />
 
           <div className="mt-6">
             {!preview ? (
-              <button
-                type="button"
-                onClick={abrirCamara}
-                className="flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center transition hover:border-slate-400 hover:bg-slate-100"
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
-                  <Camera size={28} className="text-slate-500" />
-                </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {/* ----------------------------------------- */}
+                {/* CÁMARA TRASERA */}
+                {/* ----------------------------------------- */}
 
-                <p className="mt-4 font-semibold text-slate-800">
-                  Tomar fotografía
-                </p>
+                <button
+                  type="button"
+                  onClick={() => abrirCamara("environment")}
+                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center transition hover:border-slate-400 hover:bg-slate-100"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
+                    <Camera size={27} className="text-slate-500" />
+                  </div>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Toca aquí para abrir la cámara
-                </p>
-              </button>
+                  <p className="mt-4 font-semibold text-slate-800">
+                    Cámara trasera
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">Recomendada</p>
+                </button>
+
+                {/* ----------------------------------------- */}
+                {/* CÁMARA FRONTAL */}
+                {/* ----------------------------------------- */}
+
+                <button
+                  type="button"
+                  onClick={() => abrirCamara("user")}
+                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 py-10 text-center transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                    <Camera size={27} className="text-slate-500" />
+                  </div>
+
+                  <p className="mt-4 font-semibold text-slate-800">
+                    Cámara frontal
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Usar cámara frontal
+                  </p>
+                </button>
+
+                {/* ----------------------------------------- */}
+                {/* GALERÍA */}
+                {/* ----------------------------------------- */}
+
+                <button
+                  type="button"
+                  onClick={abrirGaleria}
+                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 py-10 text-center transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                    <ImageIcon size={27} className="text-slate-500" />
+                  </div>
+
+                  <p className="mt-4 font-semibold text-slate-800">
+                    Elegir fotografía
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Desde el dispositivo
+                  </p>
+                </button>
+              </div>
             ) : (
-              <div className="relative overflow-hidden rounded-2xl border border-slate-200">
+              /* =========================================== */
+              /* FOTO SELECCIONADA */
+              /* =========================================== */
+
+              <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
                 <img
                   src={preview}
                   alt="Vista previa de la sala"
                   className="max-h-[500px] w-full object-cover"
                 />
 
-                <button
-                  type="button"
-                  onClick={eliminarFoto}
-                  className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-lg"
-                >
-                  <X size={19} />
-                </button>
+                {/* ELIMINAR FOTO */}
 
                 <button
                   type="button"
-                  onClick={abrirCamara}
-                  className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-lg"
+                  onClick={eliminarFoto}
+                  title="Eliminar fotografía"
+                  className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-lg transition hover:bg-red-50 hover:text-red-600"
                 >
-                  <Camera size={17} />
-                  Cambiar foto
+                  <Trash2 size={17} />
                 </button>
+
+                {/* CAMBIAR FOTO */}
+
+                <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => abrirCamara("environment")}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-lg"
+                  >
+                    <Camera size={17} />
+                    Trasera
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => abrirCamara("user")}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-lg"
+                  >
+                    <Camera size={17} />
+                    Frontal
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={abrirGaleria}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-lg"
+                  >
+                    <ImageIcon size={17} />
+                    Cambiar
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          <p className="mt-3 text-xs text-slate-400">
+            La fotografía es opcional. Puedes guardar la sala sin agregar una
+            imagen.
+          </p>
         </section>
 
         {/* ================================================= */}
@@ -613,13 +920,13 @@ export default function NuevaSala() {
                   type="button"
                   onClick={() => toggleIglesia(iglesia.id)}
                   className={`
-                    flex w-full items-center justify-between rounded-xl border p-4 text-left transition
-                    ${
-                      seleccionada
-                        ? "border-slate-900 bg-slate-50"
-                        : "border-slate-200 hover:bg-slate-50"
-                    }
-                  `}
+                      flex w-full items-center justify-between rounded-xl border p-4 text-left transition
+                      ${
+                        seleccionada
+                          ? "border-slate-900 bg-slate-50"
+                          : "border-slate-200 hover:bg-slate-50"
+                      }
+                    `}
                 >
                   <div>
                     <p className="font-medium text-slate-800">
@@ -635,13 +942,13 @@ export default function NuevaSala() {
 
                   <div
                     className={`
-                      flex h-6 w-6 items-center justify-center rounded-lg border text-sm
-                      ${
-                        seleccionada
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-300"
-                      }
-                    `}
+                        flex h-6 w-6 items-center justify-center rounded-lg border text-sm
+                        ${
+                          seleccionada
+                            ? "border-slate-900 bg-slate-900 text-white"
+                            : "border-slate-300"
+                        }
+                      `}
                   >
                     {seleccionada && "✓"}
                   </div>
@@ -729,11 +1036,13 @@ export default function NuevaSala() {
             })}
           </div>
 
+          {/* ================================================= */}
           {/* ELEMENTOS PERSONALIZADOS */}
+          {/* ================================================= */}
 
           {inventario
             .filter((item) => item.nombre_personalizado)
-            .map((item, index) => {
+            .map((item) => {
               const indiceReal = inventario.indexOf(item);
 
               return (
@@ -811,7 +1120,9 @@ export default function NuevaSala() {
               );
             })}
 
-          {/* BOTÓN AGREGAR */}
+          {/* ================================================= */}
+          {/* AGREGAR ELEMENTO */}
+          {/* ================================================= */}
 
           {!mostrarAgregarElemento && (
             <button
@@ -823,8 +1134,6 @@ export default function NuevaSala() {
               Agregar otro elemento
             </button>
           )}
-
-          {/* FORMULARIO OTRO */}
 
           {mostrarAgregarElemento && (
             <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
@@ -961,12 +1270,81 @@ export default function NuevaSala() {
           </button>
         </div>
       </div>
+
+      {/* =================================================== */}
+      {/* MODAL CÁMARA */}
+      {/* =================================================== */}
+
+      {camaraAbierta && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black">
+          <div className="relative h-full w-full max-w-5xl bg-black">
+            {/* VIDEO */}
+
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`h-full w-full object-contain ${
+                tipoCamara === "user" ? "-scale-x-100" : ""
+              }`}
+            />
+
+            {/* PARTE SUPERIOR */}
+
+            <div className="absolute left-0 right-0 top-0 flex items-center justify-between p-4">
+              {/* CERRAR */}
+
+              <button
+                type="button"
+                onClick={cerrarCamara}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm"
+                title="Cerrar cámara"
+              >
+                <X size={22} />
+              </button>
+
+              {/* NOMBRE */}
+
+              <div className="rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
+                {tipoCamara === "environment"
+                  ? "Cámara trasera"
+                  : "Cámara frontal"}
+              </div>
+
+              {/* CAMBIAR */}
+
+              <button
+                type="button"
+                onClick={cambiarCamara}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm"
+                title="Cambiar cámara"
+              >
+                <RotateCcw size={21} />
+              </button>
+            </div>
+
+            {/* PARTE INFERIOR */}
+
+            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center bg-gradient-to-t from-black/80 to-transparent p-10">
+              <button
+                type="button"
+                onClick={tomarFoto}
+                className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-white shadow-2xl transition active:scale-95"
+                title="Tomar fotografía"
+              >
+                <div className="h-14 w-14 rounded-full border-2 border-slate-300" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // =========================================================
-// COMPONENTES
+// INPUT
 // =========================================================
 
 function Input({ label, ...props }) {
@@ -983,6 +1361,10 @@ function Input({ label, ...props }) {
     </label>
   );
 }
+
+// =========================================================
+// TITULO DE SECCIÓN
+// =========================================================
 
 function SectionTitle({ icon, title, subtitle }) {
   return (
