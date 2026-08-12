@@ -15,6 +15,9 @@ import {
   Trash2,
   Image as ImageIcon,
   RotateCcw,
+  Users,
+  UserRound,
+  Baby,
 } from "lucide-react";
 
 import { Link, useNavigate } from "react-router-dom";
@@ -46,6 +49,15 @@ export default function NuevaSala() {
   const [tipoCamara, setTipoCamara] = useState("environment");
 
   const [iglesias, setIglesias] = useState([]);
+
+  /*
+    Ahora guardamos:
+
+    {
+      iglesia_id: 1,
+      cantidad: 10
+    }
+  */
   const [iglesiasSeleccionadas, setIglesiasSeleccionadas] = useState([]);
 
   const [tiposInventario, setTiposInventario] = useState([]);
@@ -69,6 +81,20 @@ export default function NuevaSala() {
     observaciones: "",
   });
 
+  /*
+    TIPO DE SALA
+
+    HOMBRE
+    MUJER
+  */
+  const [tipoSala, setTipoSala] = useState("");
+
+  /*
+    Cantidades que ya están ocupadas
+    en otras salas del mismo sexo.
+  */
+  const [asignacionesExistentes, setAsignacionesExistentes] = useState([]);
+
   // =====================================================
   // CARGAR CATÁLOGOS
   // =====================================================
@@ -90,18 +116,40 @@ export default function NuevaSala() {
       const [
         { data: iglesiasData, error: iglesiasError },
         { data: tiposData, error: tiposError },
+        { data: salasIglesiasData, error: salasIglesiasError },
+        { data: salasData, error: salasError },
       ] = await Promise.all([
+        // ---------------------------------------------
+        // IGLESIAS
+        // ---------------------------------------------
+
         supabase
           .from("iglesias")
           .select("*")
           .eq("activo", true)
           .order("nombre"),
 
+        // ---------------------------------------------
+        // TIPOS INVENTARIO
+        // ---------------------------------------------
+
         supabase
           .from("tipos_inventario")
           .select("*")
           .eq("activo", true)
           .order("nombre"),
+
+        // ---------------------------------------------
+        // ASIGNACIONES EXISTENTES
+        // ---------------------------------------------
+
+        supabase.from("sala_iglesias").select("sala_id, iglesia_id, cantidad"),
+
+        // ---------------------------------------------
+        // SALAS
+        // ---------------------------------------------
+
+        supabase.from("salas").select("id, tipo_sala"),
       ]);
 
       if (iglesiasError) {
@@ -112,10 +160,47 @@ export default function NuevaSala() {
         throw tiposError;
       }
 
+      if (salasIglesiasError) {
+        throw salasIglesiasError;
+      }
+
+      if (salasError) {
+        throw salasError;
+      }
+
       setIglesias(iglesiasData || []);
+
       setTiposInventario(tiposData || []);
+
+      /*
+        Unimos la relación:
+
+        sala_iglesias
+        +
+        salas
+
+        para saber si una asignación es
+        HOMBRE o MUJER.
+      */
+
+      const salasMap = {};
+
+      (salasData || []).forEach((sala) => {
+        salasMap[sala.id] = sala.tipo_sala;
+      });
+
+      const asignaciones = (salasIglesiasData || []).map((registro) => ({
+        sala_id: registro.sala_id,
+        iglesia_id: registro.iglesia_id,
+        cantidad: Number(registro.cantidad || 0),
+        tipo_sala: salasMap[registro.sala_id] || null,
+      }));
+
+      setAsignacionesExistentes(asignaciones);
     } catch (error) {
       console.error("Error cargando catálogos:", error);
+
+      alert("No fue posible cargar la información.");
     }
   };
 
@@ -133,6 +218,167 @@ export default function NuevaSala() {
   };
 
   // =====================================================
+  // CAMBIAR TIPO DE SALA
+  // =====================================================
+
+  const cambiarTipoSala = (tipo) => {
+    setTipoSala(tipo);
+
+    /*
+      Si cambia de HOMBRE a MUJER
+      o viceversa, limpiamos las cantidades
+      seleccionadas porque corresponden a
+      otro stock.
+    */
+
+    setIglesiasSeleccionadas([]);
+  };
+
+  // =====================================================
+  // OBTENER STOCK TOTAL DE LA IGLESIA
+  // =====================================================
+
+  const obtenerStockTotal = (iglesia) => {
+    if (!iglesia || !tipoSala) {
+      return 0;
+    }
+
+    if (tipoSala === "HOMBRE") {
+      return Number(iglesia.hombres || 0);
+    }
+
+    if (tipoSala === "MUJER") {
+      return Number(iglesia.mujeres || 0);
+    }
+
+    return 0;
+  };
+
+  // =====================================================
+  // OBTENER CANTIDAD YA ASIGNADA EN OTRAS SALAS
+  // DEL MISMO TIPO
+  // =====================================================
+
+  const obtenerCantidadAsignada = (iglesiaId) => {
+    if (!iglesiaId || !tipoSala) {
+      return 0;
+    }
+
+    return asignacionesExistentes
+      .filter((item) => {
+        return (
+          String(item.iglesia_id) === String(iglesiaId) &&
+          item.tipo_sala === tipoSala
+        );
+      })
+      .reduce((total, item) => {
+        return total + Number(item.cantidad || 0);
+      }, 0);
+  };
+
+  // =====================================================
+  // OBTENER PERSONAS DISPONIBLES PARA ESTA SALA
+  // =====================================================
+
+  const obtenerDisponibles = (iglesia) => {
+    if (!iglesia) {
+      return 0;
+    }
+
+    const stockTotal = obtenerStockTotal(iglesia);
+
+    const yaAsignados = obtenerCantidadAsignada(iglesia.id);
+
+    return Math.max(stockTotal - yaAsignados, 0);
+  };
+
+  // =====================================================
+  // CANTIDAD SELECCIONADA PARA ESTA SALA
+  // =====================================================
+
+  const obtenerCantidadSeleccionada = (iglesiaId) => {
+    const registro = iglesiasSeleccionadas.find(
+      (item) => String(item.iglesia_id) === String(iglesiaId),
+    );
+
+    return registro?.cantidad || 0;
+  };
+
+  // =====================================================
+  // CAMBIAR CANTIDAD DE IGLESIA
+  // =====================================================
+
+  const cambiarCantidadIglesia = (iglesia, nuevaCantidad) => {
+    const valor = String(nuevaCantidad);
+
+    // Máximo que esta iglesia puede aportar a ESTA sala.
+    // Este valor ya descuenta lo ocupado en otras salas.
+    const maximoDisponible = obtenerDisponibles(iglesia);
+
+    // Permitir dejar el campo vacío mientras escribe.
+    if (valor === "") {
+      setIglesiasSeleccionadas((prev) => {
+        const existe = prev.some(
+          (item) => String(item.iglesia_id) === String(iglesia.id),
+        );
+
+        if (existe) {
+          return prev.map((item) =>
+            String(item.iglesia_id) === String(iglesia.id)
+              ? {
+                  ...item,
+                  cantidad: "",
+                }
+              : item,
+          );
+        }
+
+        return [
+          ...prev,
+          {
+            iglesia_id: iglesia.id,
+            cantidad: "",
+          },
+        ];
+      });
+
+      return;
+    }
+
+    // Solo números enteros.
+    if (!/^\d+$/.test(valor)) {
+      return;
+    }
+
+    // Nunca permitir más personas que las disponibles.
+    const cantidad = Math.min(Number(valor), maximoDisponible);
+
+    setIglesiasSeleccionadas((prev) => {
+      const existe = prev.some(
+        (item) => String(item.iglesia_id) === String(iglesia.id),
+      );
+
+      if (existe) {
+        return prev.map((item) =>
+          String(item.iglesia_id) === String(iglesia.id)
+            ? {
+                ...item,
+                cantidad,
+              }
+            : item,
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          iglesia_id: iglesia.id,
+          cantidad,
+        },
+      ];
+    });
+  };
+  // =====================================================
   // FOTO DESDE GALERÍA / ARCHIVO
   // =====================================================
 
@@ -145,7 +391,9 @@ export default function NuevaSala() {
 
     if (!archivo.type.startsWith("image/")) {
       alert("Selecciona una imagen válida.");
+
       e.target.value = "";
+
       return;
     }
 
@@ -153,7 +401,9 @@ export default function NuevaSala() {
 
     if (archivo.size > maxSize) {
       alert("La imagen no puede superar los 10 MB.");
+
       e.target.value = "";
+
       return;
     }
 
@@ -196,14 +446,13 @@ export default function NuevaSala() {
 
   // =====================================================
   // ABRIR CÁMARA
-  // environment = trasera
-  // user        = frontal
   // =====================================================
 
   const abrirCamara = async (tipo = "environment") => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert("Tu navegador no permite acceder a la cámara.");
+
         return;
       }
 
@@ -227,6 +476,7 @@ export default function NuevaSala() {
       streamRef.current = stream;
 
       setTipoCamara(tipo);
+
       setCamaraAbierta(true);
 
       setTimeout(() => {
@@ -243,16 +493,19 @@ export default function NuevaSala() {
 
       if (error?.name === "NotAllowedError") {
         alert("Debes permitir el acceso a la cámara en Chrome.");
+
         return;
       }
 
       if (error?.name === "NotFoundError") {
         alert("No se encontró ninguna cámara en este dispositivo.");
+
         return;
       }
 
       if (error?.name === "NotReadableError") {
         alert("La cámara está siendo utilizada por otra aplicación.");
+
         return;
       }
 
@@ -266,6 +519,7 @@ export default function NuevaSala() {
 
   const cerrarCamara = () => {
     detenerCamara();
+
     setCamaraAbierta(false);
   };
 
@@ -280,7 +534,7 @@ export default function NuevaSala() {
   };
 
   // =====================================================
-  // TOMAR FOTO DESDE LA CÁMARA
+  // TOMAR FOTO
   // =====================================================
 
   const tomarFoto = () => {
@@ -292,6 +546,7 @@ export default function NuevaSala() {
 
     if (video.videoWidth === 0 || video.videoHeight === 0) {
       alert("La cámara todavía no está lista.");
+
       return;
     }
 
@@ -306,11 +561,6 @@ export default function NuevaSala() {
     if (!contexto) {
       return;
     }
-
-    /*
-      Si es cámara frontal,
-      espejamos la imagen.
-    */
 
     if (tipoCamara === "user") {
       contexto.translate(canvas.width, 0);
@@ -363,20 +613,6 @@ export default function NuevaSala() {
     if (inputGaleriaRef.current) {
       inputGaleriaRef.current.value = "";
     }
-  };
-
-  // =====================================================
-  // IGLESIAS
-  // =====================================================
-
-  const toggleIglesia = (iglesiaId) => {
-    setIglesiasSeleccionadas((prev) => {
-      if (prev.includes(iglesiaId)) {
-        return prev.filter((id) => id !== iglesiaId);
-      }
-
-      return [...prev, iglesiaId];
-    });
   };
 
   // =====================================================
@@ -543,11 +779,30 @@ export default function NuevaSala() {
   };
 
   // =====================================================
+  // TOTAL SELECCIONADO
+  // =====================================================
+
+  const totalSeleccionado = iglesiasSeleccionadas.reduce(
+    (total, item) => total + Number(item.cantidad || 0),
+    0,
+  );
+
+  // =====================================================
   // GUARDAR SALA
   // =====================================================
 
   const guardarSala = async () => {
     try {
+      // -----------------------------------------------
+      // VALIDACIONES
+      // -----------------------------------------------
+
+      if (!formulario.nombre.trim()) {
+        alert("Debes ingresar el nombre de la sala.");
+
+        return;
+      }
+
       setGuardando(true);
 
       // -----------------------------------------------
@@ -568,6 +823,8 @@ export default function NuevaSala() {
           responsable: formulario.responsable.trim() || null,
 
           observaciones: formulario.observaciones.trim() || null,
+
+          tipo_sala: tipoSala,
         })
         .select()
         .single();
@@ -613,23 +870,53 @@ export default function NuevaSala() {
       }
 
       // -----------------------------------------------
-      // 3. IGLESIAS
+      // 3. IGLESIAS + CANTIDAD
       // -----------------------------------------------
+      const registrosMap = new Map();
 
-      if (iglesiasSeleccionadas.length > 0) {
-        const registros = iglesiasSeleccionadas.map((iglesiaId) => ({
-          sala_id: sala.id,
+      iglesiasSeleccionadas.forEach((item) => {
+        const iglesiaId = item.iglesia_id;
+        const cantidad = Number(item.cantidad || 0);
 
-          iglesia_id: iglesiaId,
-        }));
-
-        const { error: iglesiasError } = await supabase
-          .from("sala_iglesias")
-          .insert(registros);
-
-        if (iglesiasError) {
-          throw iglesiasError;
+        if (!iglesiaId || cantidad <= 0) {
+          return;
         }
+
+        const clave = String(iglesiaId);
+
+        const existente = registrosMap.get(clave);
+
+        if (existente) {
+          // Si por alguna razón la iglesia aparece dos veces,
+          // sumamos las cantidades.
+          existente.cantidad += cantidad;
+        } else {
+          registrosMap.set(clave, {
+            sala_id: sala.id,
+            iglesia_id: iglesiaId,
+            cantidad,
+          });
+        }
+      });
+
+      const registros = Array.from(registrosMap.values());
+
+      console.log("=================================");
+      console.log("REGISTROS SALA_IGLESIAS");
+      console.table(registros);
+      console.log("=================================");
+
+      console.log("=================================");
+      console.log("REGISTROS SALA_IGLESIAS");
+      console.table(registros);
+      console.log("=================================");
+
+      const { error: iglesiasError } = await supabase
+        .from("sala_iglesias")
+        .insert(registros);
+
+      if (iglesiasError) {
+        throw iglesiasError;
       }
 
       // -----------------------------------------------
@@ -719,7 +1006,7 @@ export default function NuevaSala() {
               name="nombre"
               value={formulario.nombre}
               onChange={handleChange}
-              placeholder="Ej: Sala 101"
+              placeholder="Ej: Sala Hombres 1"
             />
 
             <Input
@@ -749,6 +1036,108 @@ export default function NuevaSala() {
         </section>
 
         {/* ================================================= */}
+        {/* TIPO DE SALA */}
+        {/* ================================================= */}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <SectionTitle
+            icon={<Users size={19} />}
+            title="Tipo de sala"
+            subtitle="Define qué personas pueden ingresar a esta sala"
+          />
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {/* HOMBRES */}
+
+            <button
+              type="button"
+              onClick={() => cambiarTipoSala("HOMBRE")}
+              className={`
+                rounded-2xl border p-5 text-left transition
+                ${
+                  tipoSala === "HOMBRE"
+                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                    : "border-slate-200 bg-white hover:bg-slate-50"
+                }
+              `}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`
+                      flex h-12 w-12 items-center justify-center rounded-xl
+                      ${tipoSala === "HOMBRE" ? "bg-white/10" : "bg-slate-100"}
+                    `}
+                  >
+                    <UserRound size={23} />
+                  </div>
+
+                  <div>
+                    <p className="font-semibold">Sala de hombres</p>
+
+                    <p
+                      className={`mt-1 text-sm ${
+                        tipoSala === "HOMBRE"
+                          ? "text-slate-300"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      Solo hombres
+                    </p>
+                  </div>
+                </div>
+
+                {tipoSala === "HOMBRE" && <span className="text-xl">✓</span>}
+              </div>
+            </button>
+
+            {/* MUJERES */}
+
+            <button
+              type="button"
+              onClick={() => cambiarTipoSala("MUJER")}
+              className={`
+                rounded-2xl border p-5 text-left transition
+                ${
+                  tipoSala === "MUJER"
+                    ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                    : "border-slate-200 bg-white hover:bg-slate-50"
+                }
+              `}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`
+                      flex h-12 w-12 items-center justify-center rounded-xl
+                      ${tipoSala === "MUJER" ? "bg-white/10" : "bg-slate-100"}
+                    `}
+                  >
+                    <UserRound size={23} />
+                  </div>
+
+                  <div>
+                    <p className="font-semibold">Sala de mujeres</p>
+
+                    <p
+                      className={`mt-1 text-sm ${
+                        tipoSala === "MUJER"
+                          ? "text-slate-300"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      Solo mujeres
+                    </p>
+                  </div>
+                </div>
+
+                {tipoSala === "MUJER" && <span className="text-xl">✓</span>}
+              </div>
+            </button>
+          </div>
+        </section>
+
+        {/* ================================================= */}
         {/* FOTOGRAFÍA */}
         {/* ================================================= */}
 
@@ -758,8 +1147,6 @@ export default function NuevaSala() {
             title="Fotografía de la sala"
             subtitle="Puedes tomar una fotografía o elegirla desde el dispositivo"
           />
-
-          {/* SOLO GALERÍA / ARCHIVO */}
 
           <input
             ref={inputGaleriaRef}
@@ -772,9 +1159,7 @@ export default function NuevaSala() {
           <div className="mt-6">
             {!preview ? (
               <div className="grid gap-3 sm:grid-cols-3">
-                {/* ----------------------------------------- */}
                 {/* CÁMARA TRASERA */}
-                {/* ----------------------------------------- */}
 
                 <button
                   type="button"
@@ -792,9 +1177,7 @@ export default function NuevaSala() {
                   <p className="mt-1 text-sm text-slate-500">Recomendada</p>
                 </button>
 
-                {/* ----------------------------------------- */}
                 {/* CÁMARA FRONTAL */}
-                {/* ----------------------------------------- */}
 
                 <button
                   type="button"
@@ -814,9 +1197,7 @@ export default function NuevaSala() {
                   </p>
                 </button>
 
-                {/* ----------------------------------------- */}
                 {/* GALERÍA */}
-                {/* ----------------------------------------- */}
 
                 <button
                   type="button"
@@ -837,18 +1218,12 @@ export default function NuevaSala() {
                 </button>
               </div>
             ) : (
-              /* =========================================== */
-              /* FOTO SELECCIONADA */
-              /* =========================================== */
-
               <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
                 <img
                   src={preview}
                   alt="Vista previa de la sala"
                   className="max-h-[500px] w-full object-cover"
                 />
-
-                {/* ELIMINAR FOTO */}
 
                 <button
                   type="button"
@@ -858,8 +1233,6 @@ export default function NuevaSala() {
                 >
                   <Trash2 size={17} />
                 </button>
-
-                {/* CAMBIAR FOTO */}
 
                 <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-2 sm:flex-row">
                   <button
@@ -907,61 +1280,213 @@ export default function NuevaSala() {
           <SectionTitle
             icon={<Church size={19} />}
             title="Iglesias alojadas"
-            subtitle="Puedes seleccionar más de una iglesia"
+            subtitle={
+              tipoSala
+                ? `Selecciona cuántas personas de cada iglesia estarán en esta sala`
+                : "Primero selecciona el tipo de sala"
+            }
           />
 
-          <div className="mt-6 space-y-2">
-            {iglesias.map((iglesia) => {
-              const seleccionada = iglesiasSeleccionadas.includes(iglesia.id);
+          {!tipoSala ? (
+            <div className="mt-6 rounded-xl bg-slate-50 p-6 text-center">
+              <Users size={30} className="mx-auto text-slate-400" />
 
-              return (
-                <button
-                  key={iglesia.id}
-                  type="button"
-                  onClick={() => toggleIglesia(iglesia.id)}
-                  className={`
-                      flex w-full items-center justify-between rounded-xl border p-4 text-left transition
-                      ${
-                        seleccionada
-                          ? "border-slate-900 bg-slate-50"
-                          : "border-slate-200 hover:bg-slate-50"
-                      }
-                    `}
-                >
+              <p className="mt-3 text-sm font-medium text-slate-700">
+                Selecciona primero el tipo de sala
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Necesitamos saber si la sala es de hombres o mujeres para
+                calcular el stock disponible.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* RESUMEN */}
+
+              <div className="mt-6 rounded-2xl bg-slate-900 p-5 text-white">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-800">
-                      {iglesia.nombre}
+                    <p className="text-sm font-medium text-slate-300">
+                      Personas seleccionadas
                     </p>
 
-                    {iglesia.ciudad && (
-                      <p className="mt-1 text-xs text-slate-500">
-                        {iglesia.ciudad}
-                      </p>
-                    )}
+                    <p className="mt-1 text-xs text-slate-400">
+                      {tipoSala === "HOMBRE" ? "Hombres" : "Mujeres"}
+                    </p>
                   </div>
 
-                  <div
-                    className={`
-                        flex h-6 w-6 items-center justify-center rounded-lg border text-sm
+                  <p className="text-4xl font-bold">{totalSeleccionado}</p>
+                </div>
+              </div>
+
+              {/* LISTA */}
+
+              <div className="mt-6 space-y-3">
+                {iglesias.map((iglesia) => {
+                  const stock = obtenerStockTotal(iglesia);
+
+                  // Personas de esta iglesia que ya están ocupadas
+                  // en OTRAS salas del mismo tipo.
+                  const asignado = obtenerCantidadAsignada(iglesia.id);
+
+                  // Máximo que esta iglesia puede aportar a esta nueva sala.
+                  const disponibles = obtenerDisponibles(iglesia);
+
+                  // Cantidad que estamos poniendo actualmente en esta sala.
+                  const cantidad = Number(
+                    obtenerCantidadSeleccionada(iglesia.id) || 0,
+                  );
+
+                  // Disponible REAL que queda después de lo seleccionado
+                  // en esta sala.
+                  const disponibleRestante = Math.max(
+                    disponibles - cantidad,
+                    0,
+                  );
+
+                  const seleccionada = cantidad > 0;
+
+                  return (
+                    <div
+                      key={iglesia.id}
+                      className={`
+                        rounded-2xl border p-5 transition
                         ${
                           seleccionada
-                            ? "border-slate-900 bg-slate-900 text-white"
-                            : "border-slate-300"
+                            ? "border-slate-900 bg-slate-50"
+                            : "border-slate-200 bg-white"
                         }
                       `}
-                  >
-                    {seleccionada && "✓"}
-                  </div>
-                </button>
-              );
-            })}
+                    >
+                      {/* CABECERA */}
 
-            {iglesias.length === 0 && (
-              <div className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">
-                Todavía no hay iglesias registradas.
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-800">
+                            {iglesia.nombre}
+                          </p>
+
+                          {iglesia.ciudad && (
+                            <p className="mt-1 text-xs text-slate-500">
+                              {iglesia.ciudad}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* STOCK */}
+
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-xs text-slate-400">
+                              Stock total
+                            </p>
+
+                            <p className="font-semibold text-slate-700">
+                              {stock}
+                            </p>
+                          </div>
+
+                          <div className="h-8 w-px bg-slate-200" />
+
+                          <div className="text-right">
+                            <p className="text-xs text-slate-400">
+                              Ya asignados
+                            </p>
+
+                            <p className="font-semibold text-slate-700">
+                              {asignado}
+                            </p>
+                          </div>
+
+                          <div className="h-8 w-px bg-slate-200" />
+
+                          <div className="text-right">
+                            <p className="text-xs text-slate-400">Disponible</p>
+
+                            <p
+                              className={`font-bold ${
+                                disponibleRestante > 0
+                                  ? "text-emerald-600"
+                                  : "text-red-500"
+                              }`}
+                            >
+                              {disponibleRestante}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CONTADOR */}
+
+                      <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">
+                            Cantidad en esta sala
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-400">
+                            Máximo disponible: {disponibles}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={cantidad <= 0}
+                            onClick={() =>
+                              cambiarCantidadIglesia(iglesia, cantidad - 1)
+                            }
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-30"
+                          >
+                            <Minus size={17} />
+                          </button>
+
+                          <input
+                            type="number"
+                            min="0"
+                            max={disponibles}
+                            value={cantidad}
+                            onChange={(e) =>
+                              cambiarCantidadIglesia(iglesia, e.target.value)
+                            }
+                            className="h-10 w-20 rounded-xl border border-slate-200 text-center font-bold outline-none focus:border-slate-400"
+                          />
+
+                          <button
+                            type="button"
+                            disabled={cantidad >= disponibles}
+                            onClick={() =>
+                              cambiarCantidadIglesia(iglesia, cantidad + 1)
+                            }
+                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white disabled:cursor-not-allowed disabled:opacity-30"
+                          >
+                            <Plus size={17} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* SIN STOCK */}
+
+                      {disponibles === 0 && (
+                        <div className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-xs font-medium text-red-600">
+                          No quedan{" "}
+                          {tipoSala === "HOMBRE" ? "hombres" : "mujeres"}{" "}
+                          disponibles de esta iglesia para esta sala.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {iglesias.length === 0 && (
+                  <div className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">
+                    Todavía no hay iglesias registradas.
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </section>
 
         {/* ================================================= */}
@@ -1036,9 +1561,7 @@ export default function NuevaSala() {
             })}
           </div>
 
-          {/* ================================================= */}
           {/* ELEMENTOS PERSONALIZADOS */}
-          {/* ================================================= */}
 
           {inventario
             .filter((item) => item.nombre_personalizado)
@@ -1120,9 +1643,7 @@ export default function NuevaSala() {
               );
             })}
 
-          {/* ================================================= */}
           {/* AGREGAR ELEMENTO */}
-          {/* ================================================= */}
 
           {!mostrarAgregarElemento && (
             <button
@@ -1278,8 +1799,6 @@ export default function NuevaSala() {
       {camaraAbierta && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black">
           <div className="relative h-full w-full max-w-5xl bg-black">
-            {/* VIDEO */}
-
             <video
               ref={videoRef}
               autoPlay
@@ -1290,11 +1809,7 @@ export default function NuevaSala() {
               }`}
             />
 
-            {/* PARTE SUPERIOR */}
-
             <div className="absolute left-0 right-0 top-0 flex items-center justify-between p-4">
-              {/* CERRAR */}
-
               <button
                 type="button"
                 onClick={cerrarCamara}
@@ -1304,15 +1819,11 @@ export default function NuevaSala() {
                 <X size={22} />
               </button>
 
-              {/* NOMBRE */}
-
               <div className="rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
                 {tipoCamara === "environment"
                   ? "Cámara trasera"
                   : "Cámara frontal"}
               </div>
-
-              {/* CAMBIAR */}
 
               <button
                 type="button"
@@ -1323,8 +1834,6 @@ export default function NuevaSala() {
                 <RotateCcw size={21} />
               </button>
             </div>
-
-            {/* PARTE INFERIOR */}
 
             <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center bg-gradient-to-t from-black/80 to-transparent p-10">
               <button

@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 
-import { ArrowLeft, Church, FileText, MapPin, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Church,
+  MapPin,
+  FileText,
+  Users,
+  UserRound,
+  Baby,
+} from "lucide-react";
 
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -8,38 +17,34 @@ import { supabase } from "../lib/supabase";
 
 export default function EditarIglesia() {
   const { id } = useParams();
-
   const navigate = useNavigate();
-
-  const [loading, setLoading] = useState(true);
-
-  const [guardando, setGuardando] = useState(false);
 
   const [formulario, setFormulario] = useState({
     nombre: "",
     ciudad: "",
+    hombres: 0,
+    mujeres: 0,
+    pastores: 0,
+    ninos: 0,
     observaciones: "",
   });
+
+  const [loading, setLoading] = useState(true);
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     cargarIglesia();
   }, [id]);
 
+  // =====================================================
+  // CARGAR IGLESIA
+  // =====================================================
+
   const cargarIglesia = async () => {
     try {
-      setLoading(true);
-
       const { data, error } = await supabase
         .from("iglesias")
-        .select(
-          `
-            id,
-            nombre,
-            ciudad,
-            observaciones,
-            activo
-          `,
-        )
+        .select("*")
         .eq("id", id)
         .single();
 
@@ -50,6 +55,10 @@ export default function EditarIglesia() {
       setFormulario({
         nombre: data.nombre || "",
         ciudad: data.ciudad || "",
+        hombres: Number(data.hombres) || 0,
+        mujeres: Number(data.mujeres) || 0,
+        pastores: Number(data.pastores) || 0,
+        ninos: Number(data.ninos) || 0,
         observaciones: data.observaciones || "",
       });
     } catch (error) {
@@ -63,6 +72,10 @@ export default function EditarIglesia() {
     }
   };
 
+  // =====================================================
+  // CAMBIAR CAMPOS
+  // =====================================================
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -72,18 +85,53 @@ export default function EditarIglesia() {
     }));
   };
 
-  const guardar = async () => {
-    try {
-      setGuardando(true);
+  // =====================================================
+  // TOTAL
+  // =====================================================
 
+  const totalPersonas =
+    Number(formulario.hombres) +
+    Number(formulario.mujeres) +
+    Number(formulario.pastores) +
+    Number(formulario.ninos);
+
+  // =====================================================
+  // GUARDAR
+  // =====================================================
+
+  const guardar = async (e) => {
+    e.preventDefault();
+
+    if (!formulario.nombre.trim()) {
+      alert("Debes ingresar el nombre de la iglesia.");
+      return;
+    }
+
+    if (
+      Number(formulario.hombres) < 0 ||
+      Number(formulario.mujeres) < 0 ||
+      Number(formulario.pastores) < 0 ||
+      Number(formulario.ninos) < 0
+    ) {
+      alert("Las cantidades no pueden ser negativas.");
+      return;
+    }
+
+    setGuardando(true);
+
+    try {
       const { error } = await supabase
         .from("iglesias")
         .update({
-          nombre: formulario.nombre.trim() || null,
+          nombre: formulario.nombre.trim(),
+          ciudad: formulario.ciudad.trim(),
 
-          ciudad: formulario.ciudad.trim() || null,
+          hombres: Number(formulario.hombres),
+          mujeres: Number(formulario.mujeres),
+          pastores: Number(formulario.pastores),
+          ninos: Number(formulario.ninos),
 
-          observaciones: formulario.observaciones.trim() || null,
+          observaciones: formulario.observaciones.trim(),
         })
         .eq("id", id);
 
@@ -91,33 +139,49 @@ export default function EditarIglesia() {
         throw error;
       }
 
+      alert("Iglesia actualizada correctamente.");
+
       navigate(`/iglesias/${id}`);
     } catch (error) {
       console.error(error);
 
-      alert(error?.message || "No fue posible guardar los cambios.");
+      alert("No fue posible actualizar la iglesia.");
     } finally {
       setGuardando(false);
     }
   };
 
+  // =====================================================
+  // LOADING
+  // =====================================================
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-slate-500">Cargando iglesia...</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
+
+          <p className="text-sm text-slate-500">Cargando iglesia...</p>
+        </div>
       </div>
     );
   }
 
+  // =====================================================
+  // VISTA
+  // =====================================================
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
-      <div className="mx-auto max-w-2xl">
-        {/* HEADER */}
+      <div className="mx-auto max-w-4xl">
+        {/* =====================================================
+            HEADER
+        ===================================================== */}
 
-        <div className="mb-7 flex items-center gap-4">
+        <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center">
           <Link
             to={`/iglesias/${id}`}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
           >
             <ArrowLeft size={19} />
           </Link>
@@ -132,131 +196,311 @@ export default function EditarIglesia() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
-              Modifica la información
+              Modifica la información registrada de la iglesia.
             </p>
           </div>
         </div>
 
-        <div className="space-y-5">
-          {/* INFORMACIÓN */}
+        {/* =====================================================
+            FORMULARIO
+        ===================================================== */}
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <SectionTitle
-              icon={<Church size={19} />}
-              title="Información"
-              subtitle="Datos generales"
-            />
+        <form onSubmit={guardar} className="space-y-5">
+          {/* =====================================================
+              INFORMACIÓN GENERAL
+          ===================================================== */}
 
-            <div className="mt-6 space-y-5">
-              <Input
-                label="Nombre"
-                name="nombre"
-                value={formulario.nombre}
-                onChange={handleChange}
-                placeholder="Ej: IDDP Los Andes"
-              />
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+            <div className="mb-6 flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                <Church size={25} />
+              </div>
 
-              <Input
-                label="Ciudad"
-                name="ciudad"
-                value={formulario.ciudad}
-                onChange={handleChange}
-                placeholder="Ej: Los Andes"
-                icon={<MapPin size={16} />}
-              />
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Información de la iglesia
+                </h2>
+
+                <p className="text-sm text-slate-500">Datos principales</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              {/* =====================================================
+                  NOMBRE
+              ===================================================== */}
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Nombre de la iglesia
+                </label>
+
+                <div className="relative">
+                  <Church
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+
+                  <input
+                    type="text"
+                    name="nombre"
+                    value={formulario.nombre}
+                    onChange={handleChange}
+                    placeholder="Ej: Iglesia Los Andes"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  />
+                </div>
+              </div>
+
+              {/* =====================================================
+                  CIUDAD
+              ===================================================== */}
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Ciudad
+                </label>
+
+                <div className="relative">
+                  <MapPin
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+
+                  <input
+                    type="text"
+                    name="ciudad"
+                    value={formulario.ciudad}
+                    onChange={handleChange}
+                    placeholder="Ej: Los Andes"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  />
+                </div>
+              </div>
             </div>
           </section>
 
-          {/* OBSERVACIONES */}
+          {/* =====================================================
+              CANTIDADES
+          ===================================================== */}
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <SectionTitle
-              icon={<FileText size={19} />}
-              title="Observaciones"
-              subtitle="Información adicional"
-            />
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+            <div className="mb-6 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                <Users size={23} />
+              </div>
+
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Cantidad de personas
+                </h2>
+
+                <p className="text-sm text-slate-500">
+                  Actualiza la cantidad de integrantes de la iglesia.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* =====================================================
+                  HOMBRES
+              ===================================================== */}
+
+              <div className="rounded-2xl border border-slate-200 p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                      <UserRound size={20} />
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-slate-800">Hombres</p>
+
+                      <p className="text-xs text-slate-400">Cantidad</p>
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="hombres"
+                  value={formulario.hombres}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-lg font-semibold outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+
+              {/* =====================================================
+                  MUJERES
+              ===================================================== */}
+
+              <div className="rounded-2xl border border-slate-200 p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                      <UserRound size={20} />
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-slate-800">Mujeres</p>
+
+                      <p className="text-xs text-slate-400">Cantidad</p>
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="mujeres"
+                  value={formulario.mujeres}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-lg font-semibold outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+
+              {/* =====================================================
+                  PASTORES
+              ===================================================== */}
+
+              <div className="rounded-2xl border border-slate-200 p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                      <Church size={20} />
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-slate-800">Pastores</p>
+
+                      <p className="text-xs text-slate-400">Cantidad</p>
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="pastores"
+                  value={formulario.pastores}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-lg font-semibold outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+
+              {/* =====================================================
+                  NIÑOS
+              ===================================================== */}
+
+              <div className="rounded-2xl border border-slate-200 p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                      <Baby size={20} />
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-slate-800">Niños</p>
+
+                      <p className="text-xs text-slate-400">Cantidad</p>
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="ninos"
+                  value={formulario.ninos}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-lg font-semibold outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+            </div>
+
+            {/* =====================================================
+                TOTAL
+            ===================================================== */}
+
+            <div className="mt-5 rounded-2xl bg-slate-900 p-5 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-300">
+                    Total de personas
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-400">
+                    Hombres + Mujeres + Pastores + Niños
+                  </p>
+                </div>
+
+                <p className="text-4xl font-bold">{totalPersonas}</p>
+              </div>
+            </div>
+          </section>
+
+          {/* =====================================================
+              OBSERVACIONES
+          ===================================================== */}
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                <FileText size={21} />
+              </div>
+
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Observaciones
+                </h2>
+
+                <p className="text-sm text-slate-500">
+                  Información adicional de la iglesia.
+                </p>
+              </div>
+            </div>
 
             <textarea
               name="observaciones"
               value={formulario.observaciones}
               onChange={handleChange}
-              rows={5}
-              placeholder="Información adicional..."
-              className="mt-5 w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400"
+              rows={6}
+              placeholder="Escribe aquí cualquier información adicional..."
+              className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
             />
           </section>
 
-          {/* BOTONES */}
+          {/* =====================================================
+              BOTONES
+          ===================================================== */}
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Link
-              to={`/iglesias/${id}`}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-medium"
-            >
-              Cancelar
-            </Link>
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link
+                to={`/iglesias/${id}`}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <ArrowLeft size={17} />
+                Cancelar
+              </Link>
 
-            <button
-              type="button"
-              onClick={guardar}
-              disabled={guardando}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              <Save size={18} />
+              <button
+                type="submit"
+                disabled={guardando}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Save size={17} />
 
-              {guardando ? "Guardando..." : "Guardar cambios"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =====================================================
-// INPUT
-// =====================================================
-
-function Input({ label, icon, ...props }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </span>
-
-      <div className="relative">
-        {icon && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-            {icon}
-          </span>
-        )}
-
-        <input
-          {...props}
-          className={`w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-slate-400 ${
-            icon ? "pl-10" : ""
-          }`}
-        />
-      </div>
-    </label>
-  );
-}
-
-// =====================================================
-// SECTION
-// =====================================================
-
-function SectionTitle({ icon, title, subtitle }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-        {icon}
-      </div>
-
-      <div>
-        <h2 className="font-semibold text-slate-900">{title}</h2>
-
-        <p className="text-sm text-slate-500">{subtitle}</p>
+                {guardando ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </section>
+        </form>
       </div>
     </div>
   );

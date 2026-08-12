@@ -1,6 +1,15 @@
 import { useState } from "react";
 
-import { ArrowLeft, Church, FileText, MapPin, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Church,
+  FileText,
+  MapPin,
+  Save,
+  Users,
+  UserRound,
+  Baby,
+} from "lucide-react";
 
 import { Link, useNavigate } from "react-router-dom";
 
@@ -14,6 +23,10 @@ export default function NuevaIglesia() {
   const [formulario, setFormulario] = useState({
     nombre: "",
     ciudad: "",
+    hombres: 0,
+    mujeres: 0,
+    pastores: 0,
+    ninos: 0,
     observaciones: "",
   });
 
@@ -26,16 +39,40 @@ export default function NuevaIglesia() {
     }));
   };
 
+  const cambiarCantidad = (campo, valor) => {
+    const cantidad = Math.max(0, Number(valor) || 0);
+
+    setFormulario((prev) => ({
+      ...prev,
+      [campo]: cantidad,
+    }));
+  };
+
+  const total =
+    Number(formulario.hombres || 0) +
+    Number(formulario.mujeres || 0) +
+    Number(formulario.pastores || 0) +
+    Number(formulario.ninos || 0);
+
   const guardar = async () => {
     try {
+      if (!formulario.nombre.trim()) {
+        alert("Debes ingresar el nombre de la iglesia.");
+        return;
+      }
+
       setGuardando(true);
 
       const { data, error } = await supabase
         .from("iglesias")
         .insert({
           nombre: formulario.nombre.trim() || null,
-
           ciudad: formulario.ciudad.trim() || null,
+
+          hombres: Number(formulario.hombres) || 0,
+          mujeres: Number(formulario.mujeres) || 0,
+          pastores: Number(formulario.pastores) || 0,
+          ninos: Number(formulario.ninos) || 0,
 
           observaciones: formulario.observaciones.trim() || null,
 
@@ -86,8 +123,6 @@ export default function NuevaIglesia() {
           </div>
         </div>
 
-        {/* FORMULARIO */}
-
         <div className="space-y-5">
           {/* INFORMACIÓN */}
 
@@ -115,6 +150,60 @@ export default function NuevaIglesia() {
                 placeholder="Ej: Los Andes"
                 icon={<MapPin size={16} />}
               />
+            </div>
+          </section>
+
+          {/* CANTIDAD DE PERSONAS */}
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <SectionTitle
+              icon={<Users size={19} />}
+              title="Cantidad de personas"
+              subtitle="Cantidad de personas que vienen desde esta iglesia"
+            />
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Cantidad
+                label="Hombres"
+                value={formulario.hombres}
+                icon={<UserRound size={18} />}
+                onChange={(value) => cambiarCantidad("hombres", value)}
+              />
+
+              <Cantidad
+                label="Mujeres"
+                value={formulario.mujeres}
+                icon={<UserRound size={18} />}
+                onChange={(value) => cambiarCantidad("mujeres", value)}
+              />
+
+              <Cantidad
+                label="Pastores"
+                value={formulario.pastores}
+                icon={<Church size={18} />}
+                onChange={(value) => cambiarCantidad("pastores", value)}
+              />
+
+              <Cantidad
+                label="Niños"
+                value={formulario.ninos}
+                icon={<Baby size={18} />}
+                onChange={(value) => cambiarCantidad("ninos", value)}
+              />
+            </div>
+
+            {/* TOTAL */}
+
+            <div className="mt-5 rounded-2xl bg-slate-900 p-5 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-300">Total de personas</p>
+
+                  <p className="mt-1 text-3xl font-bold">{total}</p>
+                </div>
+
+                <Users size={32} className="text-slate-400" />
+              </div>
             </div>
           </section>
 
@@ -190,6 +279,48 @@ function Input({ label, icon, ...props }) {
         />
       </div>
     </label>
+  );
+}
+
+// =====================================================
+// CANTIDAD
+// =====================================================
+
+function Cantidad({ label, value, icon, onChange }) {
+  return (
+    <div>
+      <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
+        <span className="text-slate-500">{icon}</span>
+
+        {label}
+      </label>
+
+      <div className="flex items-center rounded-xl border border-slate-200 bg-white p-1">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(0, Number(value) - 1))}
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-slate-500 hover:bg-slate-100"
+        >
+          −
+        </button>
+
+        <input
+          type="number"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-w-0 flex-1 border-0 bg-transparent text-center text-lg font-semibold text-slate-900 outline-none"
+        />
+
+        <button
+          type="button"
+          onClick={() => onChange(Number(value) + 1)}
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-slate-500 hover:bg-slate-100"
+        >
+          +
+        </button>
+      </div>
+    </div>
   );
 }
 

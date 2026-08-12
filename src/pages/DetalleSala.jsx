@@ -41,11 +41,16 @@ export default function DetalleSala() {
           *,
           sala_iglesias (
             id,
+            cantidad,
             observacion,
             iglesias (
               id,
               nombre,
-              ciudad
+              ciudad,
+              hombres,
+              mujeres,
+              pastores,
+              ninos
             )
           ),
           sala_inventario (
@@ -228,7 +233,64 @@ export default function DetalleSala() {
             title="Responsable"
             value={sala.responsable || "Sin responsable"}
           />
+
+          <InfoCard
+            icon={<Church size={19} />}
+            title="Tipo de sala"
+            value={
+              sala.tipo_sala === "HOMBRE"
+                ? "Hombres"
+                : sala.tipo_sala === "MUJER"
+                  ? "Mujeres"
+                  : "Sin definir"
+            }
+          />
         </div>
+
+        {/* PERSONAS ASIGNADAS */}
+        {sala.sala_iglesias?.length > 0 && (
+          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <SectionTitle
+              icon={<User size={19} />}
+              title="Personas alojadas"
+              subtitle="Resumen de personas asignadas a esta sala"
+            />
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <SummaryCard
+                label="Hombres"
+                value={
+                  sala.tipo_sala === "HOMBRE"
+                    ? sala.sala_iglesias.reduce(
+                        (total, item) => total + Number(item.cantidad || 0),
+                        0,
+                      )
+                    : 0
+                }
+              />
+
+              <SummaryCard
+                label="Mujeres"
+                value={
+                  sala.tipo_sala === "MUJER"
+                    ? sala.sala_iglesias.reduce(
+                        (total, item) => total + Number(item.cantidad || 0),
+                        0,
+                      )
+                    : 0
+                }
+              />
+
+              <SummaryCard
+                label="Total asignado"
+                value={sala.sala_iglesias.reduce(
+                  (total, item) => total + Number(item.cantidad || 0),
+                  0,
+                )}
+              />
+            </div>
+          </section>
+        )}
 
         {/* IGLESIAS */}
 
@@ -254,6 +316,45 @@ export default function DetalleSala() {
                     {registro.iglesias?.ciudad && (
                       <p className="mt-1 text-sm text-slate-500">
                         {registro.iglesias.ciudad}
+                      </p>
+                    )}
+
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      <MiniStat
+                        label="Asignados"
+                        value={Number(registro.cantidad || 0)}
+                      />
+
+                      <MiniStat
+                        label="Stock"
+                        value={
+                          sala.tipo_sala === "HOMBRE"
+                            ? Number(registro.iglesias?.hombres || 0)
+                            : sala.tipo_sala === "MUJER"
+                              ? Number(registro.iglesias?.mujeres || 0)
+                              : Number(registro.iglesias?.hombres || 0) +
+                                Number(registro.iglesias?.mujeres || 0)
+                        }
+                      />
+
+                      <MiniStat
+                        label="Disponible"
+                        value={Math.max(
+                          0,
+                          (sala.tipo_sala === "HOMBRE"
+                            ? Number(registro.iglesias?.hombres || 0)
+                            : sala.tipo_sala === "MUJER"
+                              ? Number(registro.iglesias?.mujeres || 0)
+                              : Number(registro.iglesias?.hombres || 0) +
+                                Number(registro.iglesias?.mujeres || 0)) -
+                            Number(registro.cantidad || 0),
+                        )}
+                      />
+                    </div>
+
+                    {registro.observacion && (
+                      <p className="mt-3 text-sm text-slate-500">
+                        {registro.observacion}
                       </p>
                     )}
                   </div>
@@ -392,6 +493,24 @@ function InfoCard({ icon, title, value }) {
           <p className="mt-0.5 text-sm font-medium text-slate-800">{value}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryCard({ label, value }) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-xs font-medium text-slate-400">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="rounded-lg bg-slate-50 px-3 py-2">
+      <p className="text-[11px] text-slate-400">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );
 }
