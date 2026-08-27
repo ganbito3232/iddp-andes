@@ -215,7 +215,7 @@ export default function DetalleSala() {
 
         {/* UBICACIÓN */}
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <InfoCard
             icon={<MapPin size={19} />}
             title="Ubicación"
@@ -232,6 +232,12 @@ export default function DetalleSala() {
             icon={<User size={19} />}
             title="Responsable"
             value={sala.responsable || "Sin responsable"}
+          />
+
+          <InfoCard
+            icon={<School size={19} />}
+            title="Colegio"
+            value={sala.colegio || "Sin colegio"}
           />
 
           <InfoCard

@@ -65,6 +65,7 @@ export default function EditarSala() {
     piso: "",
     responsable: "",
     observaciones: "",
+    colegio: "",
   });
 
   const [tipoSala, setTipoSala] = useState("");
@@ -134,6 +135,7 @@ export default function EditarSala() {
         piso: salaData.piso || "",
         responsable: salaData.responsable || "",
         observaciones: salaData.observaciones || "",
+        colegio: salaData.colegio || "",
       });
 
       setTipoSala(salaData.tipo_sala || "");
@@ -707,6 +709,7 @@ export default function EditarSala() {
           piso: formulario.piso.trim() || null,
           responsable: formulario.responsable.trim() || null,
           observaciones: formulario.observaciones.trim() || null,
+          colegio: formulario.colegio || null,
           tipo_sala: tipoSala || null,
         })
         .eq("id", id);
@@ -1022,6 +1025,114 @@ export default function EditarSala() {
                 onChange={handleChange}
               />
             </div>
+          </section>
+
+          {/* COLEGIO */}
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <SectionTitle
+              icon={<School size={19} />}
+              title="Colegio"
+              subtitle="Selecciona el colegio asociado a esta sala"
+            />
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setFormulario((prev) => ({
+                    ...prev,
+                    colegio: "Liceo Mixto",
+                  }))
+                }
+                className={`rounded-2xl border p-5 text-left transition ${
+                  formulario.colegio === "Liceo Mixto"
+                    ? "border-slate-900 bg-slate-50 ring-2 ring-slate-900/10"
+                    : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                      <School size={27} className="text-slate-600" />
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        Liceo Mixto
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">Los Andes</p>
+                    </div>
+                  </div>
+
+                  {formulario.colegio === "Liceo Mixto" && (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setFormulario((prev) => ({
+                    ...prev,
+                    colegio: "Liceo República Argentina",
+                  }))
+                }
+                className={`rounded-2xl border p-5 text-left transition ${
+                  formulario.colegio === "Liceo República Argentina"
+                    ? "border-slate-900 bg-slate-50 ring-2 ring-slate-900/10"
+                    : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                      <School size={27} className="text-slate-600" />
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        Liceo República Argentina
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">Los Andes</p>
+                    </div>
+                  </div>
+
+                  {formulario.colegio === "Liceo República Argentina" && (
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setFormulario((prev) => ({
+                  ...prev,
+                  colegio: "",
+                }))
+              }
+              className={`mt-4 w-full rounded-xl border px-4 py-3 text-sm font-medium transition ${
+                formulario.colegio === ""
+                  ? "border-slate-900 bg-slate-50 text-slate-900"
+                  : "border-slate-200 bg-white text-slate-500 hover:border-slate-400 hover:bg-slate-50"
+              }`}
+            >
+              Sin colegio / No especificado
+            </button>
+
+            {formulario.colegio && (
+              <p className="mt-3 text-xs font-medium text-slate-500">
+                Colegio seleccionado:{" "}
+                <span className="text-slate-900">{formulario.colegio}</span>
+              </p>
+            )}
           </section>
 
           {/* TIPO */}
