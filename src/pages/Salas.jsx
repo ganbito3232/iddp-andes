@@ -1,3 +1,5 @@
+import { mostrarAviso } from "../services/avisos";
+import { normalizarColegio } from "../utils/colegios";
 import { useEffect, useState } from "react";
 
 import { Link } from "react-router-dom";
@@ -5,6 +7,7 @@ import { Link } from "react-router-dom";
 import { obtenerSalas } from "../services/salas.service";
 import {
   Plus,
+  Printer,
   Search,
   School,
   Download,
@@ -20,8 +23,8 @@ const TAB_COLEGIO_KEY = "salas_colegio_tab";
 
 const TABS_COLEGIO = [
   {
-    id: "Liceo Mixto",
-    label: "Liceo Mixto",
+    id: "Liceo Amancay",
+    label: "Liceo Amancay",
   },
   {
     id: "Liceo República Argentina",
@@ -44,11 +47,11 @@ export default function Salas() {
   // El tab queda guardado en el navegador.
   // Si sales de Salas y vuelves, se mantiene el último tab seleccionado.
   const [tabColegio, setTabColegio] = useState(() => {
-    const guardado = localStorage.getItem(TAB_COLEGIO_KEY);
+    const guardado = normalizarColegio(localStorage.getItem(TAB_COLEGIO_KEY));
 
     const existe = TABS_COLEGIO.some((tab) => tab.id === guardado);
 
-    return existe ? guardado : "Liceo Mixto";
+    return existe ? guardado : "Liceo Amancay";
   });
 
   useEffect(() => {
@@ -84,7 +87,7 @@ export default function Salas() {
     } catch (error) {
       console.error("Error exportando salas:", error);
 
-      alert("No fue posible generar el Excel de salas.");
+      mostrarAviso("No fue posible generar el Excel de salas.");
     } finally {
       setExportando(false);
     }
@@ -192,7 +195,7 @@ export default function Salas() {
 
       // Por ahora mostramos el error real para saber
       // exactamente qué está bloqueando Supabase.
-      alert(error?.message || "No fue posible eliminar la sala.");
+      mostrarAviso(error?.message || "No fue posible eliminar la sala.");
     } finally {
       setEliminando(false);
     }
@@ -286,6 +289,12 @@ export default function Salas() {
           })}
         </div>
       </div>
+
+      {!loading && salas.some((sala) => (sala.colegio || "") === tabColegio) && (
+        <Link to={`/salas/qr?colegio=${encodeURIComponent(tabColegio)}`} className="mb-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800">
+          <Printer size={18} /> Imprimir QR del colegio
+        </Link>
+      )}
 
       {/* BUSCADOR */}
 

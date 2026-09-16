@@ -1,3 +1,5 @@
+import { mostrarAviso, pedirConfirmacion } from "../services/avisos";
+import { normalizarColegio } from "../utils/colegios";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -82,7 +84,7 @@ export default function DetalleSala() {
   };
 
   const desactivarSala = async () => {
-    const confirmar = window.confirm(
+    const confirmar = await pedirConfirmacion(
       `¿Quieres desactivar la sala ${sala?.nombre || ""}?`,
     );
 
@@ -106,7 +108,7 @@ export default function DetalleSala() {
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible desactivar la sala.");
+      mostrarAviso("No fue posible desactivar la sala.");
     }
   };
 
@@ -237,7 +239,7 @@ export default function DetalleSala() {
           <InfoCard
             icon={<School size={19} />}
             title="Colegio"
-            value={sala.colegio || "Sin colegio"}
+            value={normalizarColegio(sala.colegio) || "Sin colegio"}
           />
 
           <InfoCard

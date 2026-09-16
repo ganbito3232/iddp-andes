@@ -20,138 +20,71 @@ body {
   min-width: 320px;
   background: #f8fafc;
 }
-/* =========================================
-   QR - IMPRESIÓN
-========================================= */
 
-.qr-impresion {
-  display: none;
+/* Evita el zoom automático al enfocar campos en dispositivos táctiles. */
+@media (max-width: 1024px), (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
-
-/* =========================================
-   SOLO IMPRESIÓN
-========================================= */
-
+/* Composición compartida entre vista previa e impresión. */
+.qr-print-root { display: none; }
+.qr-preview-list { display: grid; gap: 28px; max-width: 680px; margin: 0 auto; }
+.qr-poster {
+  container-type: inline-size;
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%; aspect-ratio: 210 / 277; padding: 6%;
+  background: #fff; color: #142b36; border: 1px solid #d7dedf;
+  box-shadow: 0 12px 40px #142b360d;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+.qr-poster-brand { width: 100%; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #142b36; padding-bottom: 4%; }
+.qr-poster-monogram { font-size: 5cqw; font-weight: 850; letter-spacing: -.06em; line-height: 1; }
+.qr-poster-monogram span { display: block; margin-top: 8px; font-size: 1.7cqw; letter-spacing: .22em; font-weight: 600; }
+.qr-poster-event { font-size: 1.8cqw; letter-spacing: .14em; line-height: 1.6; text-align: right; font-weight: 600; }
+.qr-poster-heading { text-align: center; width: 100%; margin-top: 7%; }
+.qr-poster-eyebrow { font-size: 1.65cqw; letter-spacing: .18em; font-weight: 600; color: #52666b; }
+.qr-poster-heading h2 { font-size: 12cqw; line-height: 1.05; font-weight: 800; letter-spacing: -.055em; text-transform: uppercase; margin: 3% 0; overflow-wrap: anywhere; }
+.qr-poster-school { font-size: 3.5cqw; font-weight: 550; line-height: 1.3; }
+.qr-poster-school::after { content: ""; display: block; width: 12%; height: 3px; background: #a7834e; margin: 5% auto 0; }
+.qr-poster-code { width: 63%; margin: 5% auto 0; padding: 2%; border: 1px solid #d7dedf; border-radius: 18px; background: white; }
+.qr-poster-code svg { display: block; width: 100%; height: auto; }
+.qr-poster-instructions { text-align: center; margin-top: 5%; }
+.qr-poster-instructions h3 { font-size: 3.4cqw; font-weight: 700; letter-spacing: -.025em; }
+.qr-poster-instructions p { font-size: 2.15cqw; line-height: 1.6; color: #52666b; margin-top: 3%; }
+.qr-poster-footer { display: flex; justify-content: space-between; width: 100%; margin-top: auto; padding-top: 4%; border-top: 1px solid #d7dedf; font-size: 1.6cqw; letter-spacing: .16em; font-weight: 600; }
 @media print {
-
-  @page {
-    size: A4 portrait;
-    margin: 0;
-  }
-
-  html,
-  body {
-    width: 210mm !important;
-    height: 297mm !important;
-
-    margin: 0 !important;
-    padding: 0 !important;
-
-    overflow: hidden !important;
-  }
-
-  body {
-    background: white !important;
-  }
-
-  /* Ocultamos completamente la pantalla normal */
-
-  .qr-pantalla {
-    display: none !important;
-  }
-
-  /* Mostramos SOLO la hoja del QR */
-
-  .qr-impresion {
-    display: flex !important;
-
-    width: 210mm !important;
-    height: 297mm !important;
-
-    max-height: 297mm !important;
-
-    box-sizing: border-box;
-
-    align-items: center;
-    justify-content: center;
-
-    overflow: hidden !important;
-
-    background: white !important;
-  }
-
-  .qr-hoja {
-    width: 100%;
-    height: 100%;
-
-    box-sizing: border-box;
-
-    display: flex;
-    flex-direction: column;
-
-    align-items: center;
-    justify-content: center;
-
-    text-align: center;
-
-    padding: 20mm;
-  }
-
-  .qr-logo {
-    font-size: 18px;
-    font-weight: 700;
-
-    letter-spacing: 5px;
-
-    color: #475569;
-  }
-
-  .qr-hoja h1 {
-    margin: 20px 0 0 0;
-
-    font-size: 46px;
-    line-height: 1.1;
-
-    font-weight: 800;
-
-    color: #000;
-  }
-
-  .qr-codigo {
-    margin-top: 10px;
-
-    font-size: 20px;
-
-    color: #64748b;
-  }
-
-  .qr-codigo-box {
-    margin-top: 35px;
-
-    padding: 15px;
-
-    background: white;
-  }
-
-  .qr-texto {
-    max-width: 420px;
-
-    margin-top: 25px;
-
-    font-size: 17px;
-    line-height: 1.5;
-
-    color: #475569;
-  }
-
-  .qr-url {
-    margin-top: 25px;
-
-    font-size: 11px;
-
-    letter-spacing: 3px;
-
-    color: #94a3b8;
-  }
+  @page { size: A4 portrait; margin: 10mm; }
+  body:has(.qr-print-root) { margin: 0 !important; padding: 0 !important; background: white; }
+  body:has(.qr-print-root) > :not(.qr-print-root) { display: none !important; }
+  .qr-print-root { display: block; }
+  .qr-poster { width: 190mm; height: 276mm; aspect-ratio: auto; padding: 12mm; box-shadow: none; break-inside: avoid; break-after: page; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .qr-poster:last-child { break-after: auto; }
 }
+/* Mensajes globales: el diálogo nativo mantiene el foco y bloquea el fondo. */
+.aviso-dialogo { position: fixed; inset: 0; margin: auto; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid #ffffffb3; border-radius: 26px; color: #172c38; background: #fff; box-shadow: 0 30px 100px #0f172a40; overflow: auto; }
+.aviso-dialogo[open] { animation: aviso-aparecer .2s ease-out; }
+.aviso-dialogo::backdrop { background: #0f172a80; backdrop-filter: blur(5px); }
+.aviso-contenido { padding: 28px 28px 26px; }
+.aviso-cabecera { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+.aviso-icono { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 19px; background: #fff1f2; color: #be3455; border: 1px solid #ffe0e6; }
+.aviso-dialogo[data-tipo="success"] .aviso-icono { background: #ecfdf5; color: #047857; border-color: #d1fae5; }
+.aviso-dialogo[data-tipo="warning"] .aviso-icono { background: #fffbeb; color: #a16207; border-color: #fef3c7; }
+.aviso-dialogo[data-tipo="confirmacion"] .aviso-icono { background: #eff6ff; color: #315875; border-color: #dbeafe; }
+.aviso-cerrar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: #64748b; cursor: pointer; }
+.aviso-cerrar:hover { background: #f1f5f9; }
+.aviso-etiqueta { color: #7a8793; font-size: 10px; font-weight: 700; letter-spacing: .19em; margin-bottom: 10px; }
+.aviso-dialogo h2 { font-size: 23px; line-height: 1.25; font-weight: 750; letter-spacing: -.035em; margin: 0; }
+#aviso-mensaje { white-space: pre-wrap; overflow-wrap: anywhere; color: #5b697a; font-size: 14px; line-height: 1.75; margin-top: 14px; }
+.aviso-acciones { display: flex; justify-content: flex-end; gap: 10px; padding: 20px 28px; border-top: 1px solid #edf0f3; background: #f8fafc; }
+.aviso-acciones button { flex: 1; min-height: 46px; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 650; cursor: pointer; }
+.aviso-primario { background: #172c38; color: white; }
+.aviso-primario:hover { background: #294653; }
+.aviso-secundario { background: white; color: #475569; border: 1px solid #dce2e8; }
+.aviso-secundario:hover { background: #f1f5f9; }
+.aviso-dialogo button:focus-visible { outline: 3px solid #799eae; outline-offset: 3px; }
+@keyframes aviso-aparecer { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .aviso-dialogo[open] { animation: none; } }

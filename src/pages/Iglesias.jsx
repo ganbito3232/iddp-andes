@@ -1,3 +1,5 @@
+import { mostrarAviso, pedirConfirmacion } from "../services/avisos";
+import { normalizarColegio } from "../utils/colegios";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -192,7 +194,7 @@ export default function Iglesias() {
           salaId: sala.id,
           salaNombre: sala.nombre || "Sin nombre",
           salaCodigo: sala.codigo || "",
-          colegio: sala.colegio || null,
+          colegio: normalizarColegio(sala.colegio) || null,
           tipoSala: sala.tipo_sala || null,
           cantidad,
         };
@@ -238,7 +240,7 @@ export default function Iglesias() {
     } catch (error) {
       console.error("Error cargando iglesias:", error);
 
-      alert(error?.message || "No fue posible cargar las iglesias.");
+      mostrarAviso(error?.message || "No fue posible cargar las iglesias.");
     } finally {
       setLoading(false);
     }
@@ -319,7 +321,7 @@ export default function Iglesias() {
       ? "¿Quieres activar nuevamente esta iglesia?"
       : "¿Quieres desactivar esta iglesia?";
 
-    if (!window.confirm(mensaje)) {
+    if (!(await pedirConfirmacion(mensaje))) {
       return;
     }
 
@@ -348,7 +350,7 @@ export default function Iglesias() {
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible cambiar el estado.");
+      mostrarAviso("No fue posible cambiar el estado.");
     }
   };
 

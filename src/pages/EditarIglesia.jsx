@@ -1,3 +1,4 @@
+import { mostrarAviso } from "../services/avisos";
 import { useEffect, useState } from "react";
 
 import {
@@ -64,7 +65,7 @@ export default function EditarIglesia() {
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible cargar la iglesia.");
+      mostrarAviso("No fue posible cargar la iglesia.");
 
       navigate("/iglesias");
     } finally {
@@ -103,7 +104,7 @@ export default function EditarIglesia() {
     e.preventDefault();
 
     if (!formulario.nombre.trim()) {
-      alert("Debes ingresar el nombre de la iglesia.");
+      mostrarAviso("Debes ingresar el nombre de la iglesia.", "warning");
       return;
     }
 
@@ -113,7 +114,7 @@ export default function EditarIglesia() {
       Number(formulario.pastores) < 0 ||
       Number(formulario.ninos) < 0
     ) {
-      alert("Las cantidades no pueden ser negativas.");
+      mostrarAviso("Las cantidades no pueden ser negativas.", "warning");
       return;
     }
 
@@ -139,13 +140,13 @@ export default function EditarIglesia() {
         throw error;
       }
 
-      alert("Iglesia actualizada correctamente.");
+      await mostrarAviso("Iglesia actualizada correctamente.", "success");
 
       navigate(`/iglesias/${id}`);
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible actualizar la iglesia.");
+      mostrarAviso("No fue posible actualizar la iglesia.");
     } finally {
       setGuardando(false);
     }

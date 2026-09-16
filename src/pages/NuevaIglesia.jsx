@@ -1,3 +1,4 @@
+import { mostrarAviso } from "../services/avisos";
 import { useState } from "react";
 
 import {
@@ -57,7 +58,7 @@ export default function NuevaIglesia() {
   const guardar = async () => {
     try {
       if (!formulario.nombre.trim()) {
-        alert("Debes ingresar el nombre de la iglesia.");
+        mostrarAviso("Debes ingresar el nombre de la iglesia.", "warning");
         return;
       }
 
@@ -89,7 +90,7 @@ export default function NuevaIglesia() {
     } catch (error) {
       console.error(error);
 
-      alert(error?.message || "No fue posible guardar la iglesia.");
+      mostrarAviso(error?.message || "No fue posible guardar la iglesia.");
     } finally {
       setGuardando(false);
     }

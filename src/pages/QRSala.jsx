@@ -1,194 +1,62 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Printer, QrCode, School } from "lucide-react";
-
-import { Link, useParams } from "react-router-dom";
-
-import { QRCodeSVG } from "qrcode.react";
-
+import { createPortal } from "react-dom";
+import { ArrowLeft, Printer } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { normalizarColegio } from "../utils/colegios";
+import QRPoster from "../components/QRPoster";
 
 export default function QRSala() {
   const { id } = useParams();
-
-  const [sala, setSala] = useState(null);
-
-  const [loading, setLoading] = useState(true);
+  const [params] = useSearchParams();
+  const colegio = normalizarColegio(params.get("colegio"));
+  const [estado, setEstado] = useState({ loading: true, salas: [], error: "" });
 
   useEffect(() => {
-    cargarSala();
-  }, [id]);
-
-  const cargarSala = async () => {
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("salas")
-        .select("id, nombre, codigo, activo")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        throw error;
+    let vigente = true;
+    async function cargar() {
+      setEstado({ loading: true, salas: [], error: "" });
+      try {
+        let consulta = supabase.from("salas").select("id, nombre, codigo, colegio, activo");
+        consulta = id ? consulta.eq("id", id) : consulta.eq("activo", true);
+        const { data, error } = await consulta;
+        if (error) throw error;
+        const salas = (data || [])
+          .filter((sala) => id || normalizarColegio(sala.colegio) === colegio)
+          .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es", { numeric: true }));
+        if (vigente) setEstado({ loading: false, salas, error: "" });
+      } catch {
+        if (vigente) setEstado({ loading: false, salas: [], error: "No fue posible cargar los QR. Vuelve a Salas e inténtalo nuevamente." });
       }
-
-      setSala(data);
-    } catch (error) {
-      console.error(error);
-
-      alert("No fue posible cargar la sala.");
-    } finally {
-      setLoading(false);
     }
-  };
+    cargar();
+    return () => { vigente = false; };
+  }, [id, colegio]);
 
-  const urlPublica = `${window.location.origin}/sala/${id}`;
-
-  const imprimirQR = () => {
-    window.print();
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-slate-500">Cargando QR...</p>
-      </div>
-    );
-  }
-
-  if (!sala) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="text-center">
-          <School size={48} className="mx-auto text-slate-300" />
-
-          <h2 className="mt-4 font-semibold text-slate-800">
-            Sala no encontrada
-          </h2>
-
-          <Link
-            to="/salas"
-            className="mt-5 inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white"
-          >
-            Volver a salas
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
+  const { loading, salas, error } = estado;
   return (
     <>
-      {/* ============================================ */}
-      {/* PANTALLA */}
-      {/* ============================================ */}
-
-      <div className="qr-pantalla min-h-screen bg-slate-50 p-4 sm:p-8">
-        {" "}
-        <div className="mx-auto max-w-xl">
-          {/* HEADER */}
-
-          <div className="mb-6 flex items-center gap-4">
-            <Link
-              to={`/salas/${id}`}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white"
-            >
-              <ArrowLeft size={19} />
-            </Link>
-
+      <div className="qr-pantalla p-4 sm:p-8">
+        <div className="mx-auto max-w-4xl">
+          <Link to={id ? "/salas/" + id : "/salas"} className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-600"><ArrowLeft size={18} />Volver a {id ? "la sala" : "salas"}</Link>
+          <div className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                {sala.codigo || "Sin código"}
-              </p>
-
-              <h1 className="text-2xl font-bold text-slate-900">
-                QR de la sala
-              </h1>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Señalética de salas</p>
+              <h1 className="mt-2 text-2xl font-bold text-slate-900">{id ? "QR de la sala" : colegio || "Salas sin colegio"}</h1>
+              <p className="mt-2 text-sm text-slate-500">{loading ? "Cargando salas…" : salas.length + " hojas · Un QR por página A4"}</p>
             </div>
+            <button type="button" onClick={() => window.print()} disabled={loading || !!error || !salas.length} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-40"><Printer size={18} />{id ? "Imprimir QR" : "Imprimir todos los QR"}</button>
           </div>
-
-          {/* TARJETA */}
-
-          <div
-            id="qr-print"
-            className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm"
-          >
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">
-              <QrCode size={25} />
-            </div>
-
-            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
-              IDDP LOS ANDES
-            </p>
-
-            <h2 className="mt-2 text-3xl font-bold text-slate-900">
-              {sala.nombre}
-            </h2>
-
-            {sala.codigo && (
-              <p className="mt-2 text-sm text-slate-500">{sala.codigo}</p>
-            )}
-
-            {/* QR */}
-
-            <div className="mx-auto mt-8 flex w-fit rounded-3xl border border-slate-100 bg-white p-5">
-              <QRCodeSVG
-                value={urlPublica}
-                size={260}
-                level="H"
-                includeMargin
-              />
-            </div>
-
-            <p className="mx-auto mt-7 max-w-sm text-sm leading-6 text-slate-500">
-              Escanea este código QR para consultar la información y el
-              inventario de esta sala.
-            </p>
-
-            <div className="mt-7 rounded-2xl bg-slate-50 p-4">
-              <p className="break-all text-xs text-slate-400">{urlPublica}</p>
-            </div>
-          </div>
-
-          {/* BOTÓN */}
-
-          <button
-            type="button"
-            onClick={imprimirQR}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            <Printer size={18} />
-            Imprimir QR
-          </button>
+          <p className="mb-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Imprime en A4 vertical, a tamaño real (100 %), sin encabezados ni pies de página del navegador. También puedes elegir Guardar como PDF.</p>
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-5 text-red-700">{error}</p>}
+          {!loading && !error && !salas.length && <p className="p-8 text-center text-slate-500">No hay salas para imprimir.</p>}
+          <div className="qr-preview-list">{salas.map((sala) => <QRPoster key={sala.id} sala={sala} />)}</div>
         </div>
       </div>
-
-      {/* ============================================ */}
-      {/* VERSION IMPRESIÓN */}
-      {/* ============================================ */}
-
-      <div className="qr-impresion">
-        {" "}
-        <div className="w-full max-w-[500px] text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">
-            IDDP LOS ANDES
-          </p>
-
-          <h1 className="mt-5 text-5xl font-bold text-black">{sala.nombre}</h1>
-
-          {sala.codigo && (
-            <p className="mt-3 text-xl text-slate-600">{sala.codigo}</p>
-          )}
-
-          <div className="mx-auto mt-12 w-fit">
-            <QRCodeSVG value={urlPublica} size={360} level="H" includeMargin />
-          </div>
-
-          <p className="mt-10 text-lg text-slate-600">
-            Escanea para conocer la información de esta sala
-          </p>
-        </div>
-      </div>
+      {!loading && !error && salas.length > 0 && createPortal(
+        <div className="qr-print-root">{salas.map((sala) => <QRPoster key={sala.id} sala={sala} />)}</div>,
+        document.body,
+      )}
     </>
   );
 }

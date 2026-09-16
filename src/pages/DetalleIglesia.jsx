@@ -1,3 +1,4 @@
+import { mostrarAviso, pedirConfirmacion } from "../services/avisos";
 import { useEffect, useState } from "react";
 
 import {
@@ -49,7 +50,7 @@ export default function DetalleIglesia() {
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible cargar la iglesia.");
+      mostrarAviso("No fue posible cargar la iglesia.");
 
       navigate("/iglesias");
     } finally {
@@ -64,7 +65,7 @@ export default function DetalleIglesia() {
   const cambiarEstado = async () => {
     const nuevoEstado = !iglesia.activo;
 
-    const confirmar = window.confirm(
+    const confirmar = await pedirConfirmacion(
       nuevoEstado
         ? "¿Quieres activar esta iglesia?"
         : "¿Quieres desactivar esta iglesia?",
@@ -93,7 +94,7 @@ export default function DetalleIglesia() {
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible cambiar el estado.");
+      mostrarAviso("No fue posible cambiar el estado.");
     }
   };
 

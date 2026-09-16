@@ -1,3 +1,4 @@
+import { mostrarAviso, pedirConfirmacion } from "../services/avisos";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -117,7 +118,7 @@ export default function Inventario() {
     } catch (error) {
       console.error("Error cargando inventario:", error);
 
-      alert("No fue posible cargar el inventario.");
+      mostrarAviso("No fue posible cargar el inventario.");
     } finally {
       setLoading(false);
     }
@@ -135,7 +136,7 @@ export default function Inventario() {
     } catch (error) {
       console.error("Error exportando Excel:", error);
 
-      alert("No fue posible generar el Excel.");
+      mostrarAviso("No fue posible generar el Excel.");
     } finally {
       setExportando(false);
     }
@@ -202,7 +203,7 @@ export default function Inventario() {
   const cambiarEstado = async (item) => {
     const nuevoEstado = !item.activo;
 
-    const confirmar = window.confirm(
+    const confirmar = await pedirConfirmacion(
       nuevoEstado
         ? "¿Quieres volver a mostrar este producto?"
         : "¿Quieres ocultar este producto del inventario?",
@@ -237,7 +238,7 @@ export default function Inventario() {
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible cambiar el estado.");
+      mostrarAviso("No fue posible cambiar el estado.");
     }
   };
 
@@ -292,7 +293,7 @@ export default function Inventario() {
     } catch (error) {
       console.error(error);
 
-      alert("No fue posible cargar el historial.");
+      mostrarAviso("No fue posible cargar el historial.");
     }
   };
 
@@ -710,7 +711,7 @@ function FormularioProducto({ item, onClose, onGuardado }) {
 
   const guardar = async () => {
     if (!formulario.nombre.trim()) {
-      alert("Ingresa el nombre del producto.");
+      mostrarAviso("Ingresa el nombre del producto.", "warning");
 
       return;
     }
@@ -764,7 +765,7 @@ function FormularioProducto({ item, onClose, onGuardado }) {
     } catch (error) {
       console.error(error);
 
-      alert(error?.message || "No fue posible guardar el producto.");
+      mostrarAviso(error?.message || "No fue posible guardar el producto.");
     } finally {
       setGuardando(false);
     }
@@ -880,7 +881,7 @@ function FormularioMovimiento({ item, tipo, onClose, onGuardado }) {
     const cantidadNumero = Number(cantidad);
 
     if (!cantidadNumero || cantidadNumero <= 0) {
-      alert("Ingresa una cantidad válida.");
+      mostrarAviso("Ingresa una cantidad válida.", "warning");
 
       return;
     }
@@ -892,7 +893,7 @@ function FormularioMovimiento({ item, tipo, onClose, onGuardado }) {
         const disponible = await obtenerDisponibleActual();
 
         if (cantidadNumero > disponible) {
-          alert(
+          mostrarAviso(
             `No puedes utilizar ${cantidadNumero}. Solo quedan ${disponible}.`,
           );
 
@@ -922,7 +923,7 @@ function FormularioMovimiento({ item, tipo, onClose, onGuardado }) {
     } catch (error) {
       console.error(error);
 
-      alert(error?.message || "No fue posible registrar el movimiento.");
+      mostrarAviso(error?.message || "No fue posible registrar el movimiento.");
     } finally {
       setGuardando(false);
     }

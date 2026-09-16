@@ -1,3 +1,4 @@
+import { mostrarAviso } from "../services/avisos";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -201,7 +202,7 @@ export default function NuevaSala() {
     } catch (error) {
       console.error("Error cargando catálogos:", error);
 
-      alert("No fue posible cargar la información.");
+      mostrarAviso("No fue posible cargar la información.");
     }
   };
 
@@ -222,7 +223,7 @@ export default function NuevaSala() {
   // CAMBIAR TIPO DE SALA
   // =====================================================
 
-  const cambiarTipoSala = (tipo) => {
+  const cambiarTipoSala = async (tipo) => {
     setTipoSala(tipo);
 
     /*
@@ -391,7 +392,7 @@ export default function NuevaSala() {
     }
 
     if (!archivo.type.startsWith("image/")) {
-      alert("Selecciona una imagen válida.");
+      mostrarAviso("Selecciona una imagen válida.", "warning");
 
       e.target.value = "";
 
@@ -401,7 +402,7 @@ export default function NuevaSala() {
     const maxSize = 10 * 1024 * 1024;
 
     if (archivo.size > maxSize) {
-      alert("La imagen no puede superar los 10 MB.");
+      mostrarAviso("La imagen no puede superar los 10 MB.", "warning");
 
       e.target.value = "";
 
@@ -452,7 +453,7 @@ export default function NuevaSala() {
   const abrirCamara = async (tipo = "environment") => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Tu navegador no permite acceder a la cámara.");
+        mostrarAviso("Tu navegador no permite acceder a la cámara.");
 
         return;
       }
@@ -493,24 +494,24 @@ export default function NuevaSala() {
       console.error("Error accediendo a la cámara:", error);
 
       if (error?.name === "NotAllowedError") {
-        alert("Debes permitir el acceso a la cámara en Chrome.");
+        mostrarAviso("Debes permitir el acceso a la cámara en Chrome.", "warning");
 
         return;
       }
 
       if (error?.name === "NotFoundError") {
-        alert("No se encontró ninguna cámara en este dispositivo.");
+        mostrarAviso("No se encontró ninguna cámara en este dispositivo.");
 
         return;
       }
 
       if (error?.name === "NotReadableError") {
-        alert("La cámara está siendo utilizada por otra aplicación.");
+        mostrarAviso("La cámara está siendo utilizada por otra aplicación.");
 
         return;
       }
 
-      alert("No fue posible acceder a la cámara.");
+      mostrarAviso("No fue posible acceder a la cámara.");
     }
   };
 
@@ -546,7 +547,7 @@ export default function NuevaSala() {
     }
 
     if (video.videoWidth === 0 || video.videoHeight === 0) {
-      alert("La cámara todavía no está lista.");
+      mostrarAviso("La cámara todavía no está lista.", "warning");
 
       return;
     }
@@ -799,7 +800,7 @@ export default function NuevaSala() {
       // -----------------------------------------------
 
       if (!formulario.nombre.trim()) {
-        alert("Debes ingresar el nombre de la sala.");
+        mostrarAviso("Debes ingresar el nombre de la sala.", "warning");
 
         return;
       }
@@ -958,7 +959,7 @@ export default function NuevaSala() {
     } catch (error) {
       console.error("Error guardando sala:", error);
 
-      alert(error?.message || "No fue posible guardar la sala.");
+      mostrarAviso(error?.message || "No fue posible guardar la sala.");
     } finally {
       setGuardando(false);
     }
@@ -1055,11 +1056,11 @@ export default function NuevaSala() {
               onClick={() =>
                 setFormulario((prev) => ({
                   ...prev,
-                  colegio: "Liceo Mixto",
+                  colegio: "Liceo Amancay",
                 }))
               }
               className={`rounded-2xl border p-5 text-left transition ${
-                formulario.colegio === "Liceo Mixto"
+                formulario.colegio === "Liceo Amancay"
                   ? "border-slate-900 bg-slate-50 ring-2 ring-slate-900/10"
                   : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
               }`}
@@ -1070,11 +1071,11 @@ export default function NuevaSala() {
                     <School size={27} className="text-slate-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-900">Liceo Mixto</p>
+                    <p className="font-semibold text-slate-900">Liceo Amancay</p>
                     <p className="mt-1 text-sm text-slate-500">Los Andes</p>
                   </div>
                 </div>
-                {formulario.colegio === "Liceo Mixto" && (
+                {formulario.colegio === "Liceo Amancay" && (
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
                     ✓
                   </span>

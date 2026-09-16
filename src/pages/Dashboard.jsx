@@ -79,7 +79,7 @@ export default function Dashboard() {
         // IGLESIAS
         // -------------------------------------------
 
-        supabase.from("iglesias").select("id, nombre, ciudad, activo"),
+        supabase.from("iglesias").select("id, nombre, ciudad, activo, pastores, hombres, mujeres, ninos"),
 
         // -------------------------------------------
         // INVENTARIO GENERAL
@@ -158,6 +158,20 @@ export default function Dashboard() {
   const iglesiasActivas = iglesias.filter(
     (iglesia) => iglesia.activo !== false,
   );
+
+  const participantes = [
+    { campo: "pastores", titulo: "Pastores" },
+    { campo: "hombres", titulo: "Varones" },
+    { campo: "mujeres", titulo: "Mujeres" },
+    { campo: "ninos", titulo: "Niños" },
+  ].map(({ campo, titulo }) => ({
+    titulo,
+    total: iglesiasActivas.reduce(
+      (total, iglesia) => total + (Number(iglesia[campo]) || 0),
+      0,
+    ),
+  }));
+  const totalParticipantes = participantes.reduce((total, grupo) => total + grupo.total, 0);
 
   // =====================================================
   // INVENTARIO SALAS
@@ -329,6 +343,23 @@ export default function Dashboard() {
         {/* ================================================= */}
         {/* ESTADISTICAS */}
         {/* ================================================= */}
+
+        <section className="mb-6" aria-labelledby="participantes-titulo">
+          <h2 id="participantes-titulo" className="font-semibold text-slate-900">Participantes</h2>
+          <p className="mt-1 mb-4 text-sm text-slate-500">Personas registradas en las iglesias activas</p>
+          <dl className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {participantes.map((grupo) => (
+              <div key={grupo.titulo} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <dt className="text-sm text-slate-500">{grupo.titulo}</dt>
+                <dd className="mt-2 text-2xl font-bold text-slate-900">{grupo.total.toLocaleString("es-CL")}</dd>
+              </div>
+            ))}
+            <div className="col-span-2 rounded-2xl bg-slate-900 p-5 text-white shadow-sm lg:col-span-1">
+              <dt className="text-sm text-slate-200">Total de personas</dt>
+              <dd className="mt-2 text-2xl font-bold">{totalParticipantes.toLocaleString("es-CL")}</dd>
+            </div>
+          </dl>
+        </section>
 
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           {stats.map((stat) => {

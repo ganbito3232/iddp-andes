@@ -59,6 +59,7 @@ export default function App() {
           {/* SALAS */}
 
           <Route path="/salas" element={<Salas />} />
+          <Route path="/salas/qr" element={<QRSala />} />
 
           <Route path="/salas/nueva" element={<NuevaSala />} />
 

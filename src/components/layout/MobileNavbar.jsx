@@ -1,3 +1,4 @@
+import { mostrarAviso } from "../../services/avisos";
 import { Home, School, Church, Package, LogOut, X } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -41,7 +42,7 @@ export default function MobileNavbar() {
       if (error) {
         console.error("Error cerrando sesión:", error);
 
-        alert("No fue posible cerrar sesión.");
+        mostrarAviso("No fue posible cerrar sesión.");
 
         setCerrandoSesion(false);
         return;
@@ -51,7 +52,7 @@ export default function MobileNavbar() {
     } catch (error) {
       console.error("Error cerrando sesión:", error);
 
-      alert("No fue posible cerrar sesión.");
+      mostrarAviso("No fue posible cerrar sesión.");
 
       setCerrandoSesion(false);
     }

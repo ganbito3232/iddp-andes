@@ -1,3 +1,5 @@
+import { mostrarAviso, pedirConfirmacion } from "../services/avisos";
+import { normalizarColegio } from "../utils/colegios";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -135,7 +137,7 @@ export default function EditarSala() {
         piso: salaData.piso || "",
         responsable: salaData.responsable || "",
         observaciones: salaData.observaciones || "",
-        colegio: salaData.colegio || "",
+        colegio: normalizarColegio(salaData.colegio),
       });
 
       setTipoSala(salaData.tipo_sala || "");
@@ -195,7 +197,7 @@ export default function EditarSala() {
       setInventarioOriginal(inventarioData || []);
     } catch (error) {
       console.error("Error cargando sala:", error);
-      alert(error?.message || "No fue posible cargar la sala.");
+      mostrarAviso(error?.message || "No fue posible cargar la sala.");
       navigate("/salas");
     } finally {
       setLoading(false);
@@ -294,7 +296,7 @@ export default function EditarSala() {
   // TIPO DE SALA
   // =====================================================
 
-  const cambiarTipoSala = (tipo) => {
+  const cambiarTipoSala = async (tipo) => {
     if (tipo === tipoSala) return;
 
     const cantidadesActuales = iglesiasSeleccionadas.filter(
@@ -302,7 +304,7 @@ export default function EditarSala() {
     );
 
     if (cantidadesActuales.length > 0) {
-      const confirmar = window.confirm(
+      const confirmar = await pedirConfirmacion(
         "Cambiar el tipo de sala cambia el stock utilizado (hombres/mujeres). ¿Quieres continuar? Revisa nuevamente las cantidades.",
       );
 
@@ -364,13 +366,13 @@ export default function EditarSala() {
     if (!archivo) return;
 
     if (!archivo.type.startsWith("image/")) {
-      alert("Selecciona una imagen válida.");
+      mostrarAviso("Selecciona una imagen válida.", "warning");
       e.target.value = "";
       return;
     }
 
     if (archivo.size > 10 * 1024 * 1024) {
-      alert("La imagen no puede superar los 10 MB.");
+      mostrarAviso("La imagen no puede superar los 10 MB.", "warning");
       e.target.value = "";
       return;
     }
@@ -423,7 +425,7 @@ export default function EditarSala() {
   const abrirCamara = async (tipo = "environment") => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
-        alert("Tu navegador no permite acceder a la cámara.");
+        mostrarAviso("Tu navegador no permite acceder a la cámara.");
         return;
       }
 
@@ -458,13 +460,13 @@ export default function EditarSala() {
       console.error("Error accediendo a la cámara:", error);
 
       if (error?.name === "NotAllowedError") {
-        alert("Debes permitir el acceso a la cámara.");
+        mostrarAviso("Debes permitir el acceso a la cámara.", "warning");
       } else if (error?.name === "NotFoundError") {
-        alert("No se encontró ninguna cámara.");
+        mostrarAviso("No se encontró ninguna cámara.");
       } else if (error?.name === "NotReadableError") {
-        alert("La cámara está siendo utilizada por otra aplicación.");
+        mostrarAviso("La cámara está siendo utilizada por otra aplicación.");
       } else {
-        alert("No fue posible acceder a la cámara.");
+        mostrarAviso("No fue posible acceder a la cámara.");
       }
     }
   };
@@ -484,7 +486,7 @@ export default function EditarSala() {
     const video = videoRef.current;
 
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-      alert("La cámara todavía no está lista.");
+      mostrarAviso("La cámara todavía no está lista.", "warning");
       return;
     }
 
@@ -675,7 +677,7 @@ export default function EditarSala() {
   const guardarSala = async () => {
     try {
       if (!formulario.nombre.trim()) {
-        alert("Debes ingresar el nombre de la sala.");
+        mostrarAviso("Debes ingresar el nombre de la sala.", "warning");
         return;
       }
 
@@ -689,7 +691,7 @@ export default function EditarSala() {
           )
           .join("\n");
 
-        alert(`Hay cantidades superiores al stock disponible.\n\n${detalle}`);
+        mostrarAviso(`Hay cantidades superiores al stock disponible.\n\n${detalle}`);
 
         return;
       }
@@ -925,7 +927,7 @@ export default function EditarSala() {
       navigate(`/salas/${id}`);
     } catch (error) {
       console.error("Error guardando cambios:", error);
-      alert(error?.message || "No fue posible guardar los cambios.");
+      mostrarAviso(error?.message || "No fue posible guardar los cambios.");
     } finally {
       setGuardando(false);
     }
@@ -1042,11 +1044,11 @@ export default function EditarSala() {
                 onClick={() =>
                   setFormulario((prev) => ({
                     ...prev,
-                    colegio: "Liceo Mixto",
+                    colegio: "Liceo Amancay",
                   }))
                 }
                 className={`rounded-2xl border p-5 text-left transition ${
-                  formulario.colegio === "Liceo Mixto"
+                  formulario.colegio === "Liceo Amancay"
                     ? "border-slate-900 bg-slate-50 ring-2 ring-slate-900/10"
                     : "border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50"
                 }`}
@@ -1059,13 +1061,13 @@ export default function EditarSala() {
 
                     <div>
                       <p className="font-semibold text-slate-900">
-                        Liceo Mixto
+                        Liceo Amancay
                       </p>
                       <p className="mt-1 text-sm text-slate-500">Los Andes</p>
                     </div>
                   </div>
 
-                  {formulario.colegio === "Liceo Mixto" && (
+                  {formulario.colegio === "Liceo Amancay" && (
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
                       ✓
                     </span>

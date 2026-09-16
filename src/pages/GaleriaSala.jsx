@@ -1,3 +1,4 @@
+import { mostrarAviso } from "../services/avisos";
 import {
   ArrowLeft,
   Camera,
@@ -96,7 +97,7 @@ export default function GaleriaSala() {
     } catch (error) {
       console.error("Error cargando galería:", error);
 
-      alert("No fue posible cargar la galería.");
+      mostrarAviso("No fue posible cargar la galería.");
     } finally {
       setLoading(false);
     }
@@ -188,7 +189,7 @@ export default function GaleriaSala() {
         mensaje = error.message;
       }
 
-      alert(mensaje);
+      mostrarAviso(mensaje);
     }
   };
 
@@ -204,7 +205,7 @@ export default function GaleriaSala() {
     } catch (error) {
       console.error("Error cambiando cámara:", error);
 
-      alert("No fue posible cambiar de cámara.");
+      mostrarAviso("No fue posible cambiar de cámara.");
     }
   };
 
@@ -217,12 +218,12 @@ export default function GaleriaSala() {
       const video = videoRef.current;
 
       if (!video) {
-        alert("La cámara no está disponible.");
+        mostrarAviso("La cámara no está disponible.");
         return;
       }
 
       if (video.videoWidth === 0 || video.videoHeight === 0) {
-        alert("La cámara todavía no está lista. Espera un momento.");
+        mostrarAviso("La cámara todavía no está lista. Espera un momento.", "warning");
         return;
       }
 
@@ -251,7 +252,7 @@ export default function GaleriaSala() {
       canvas.toBlob(
         async (blob) => {
           if (!blob) {
-            alert("No fue posible generar la fotografía.");
+            mostrarAviso("No fue posible generar la fotografía.");
             return;
           }
 
@@ -269,7 +270,7 @@ export default function GaleriaSala() {
     } catch (error) {
       console.error("Error tomando fotografía:", error);
 
-      alert("No fue posible tomar la fotografía.");
+      mostrarAviso("No fue posible tomar la fotografía.");
     }
   };
 
@@ -373,7 +374,7 @@ export default function GaleriaSala() {
     } catch (error) {
       console.error("Error subiendo fotos:", error);
 
-      alert(error?.message || "No fue posible subir las fotos.");
+      mostrarAviso(error?.message || "No fue posible subir las fotos.");
     } finally {
       setSubiendo(false);
 
@@ -440,7 +441,7 @@ export default function GaleriaSala() {
     } catch (error) {
       console.error("Error eliminando foto:", error);
 
-      alert("No fue posible eliminar la foto.");
+      mostrarAviso("No fue posible eliminar la foto.");
     }
   };
 

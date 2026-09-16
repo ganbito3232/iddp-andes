@@ -1,3 +1,4 @@
+import { mostrarAviso } from "../../services/avisos";
 import {
   Home,
   School,
@@ -44,7 +45,7 @@ export default function Sidebar() {
 
       if (error) {
         console.error("Error cerrando sesión:", error);
-        alert("No fue posible cerrar sesión.");
+        mostrarAviso("No fue posible cerrar sesión.");
         return;
       }
 
@@ -53,7 +54,7 @@ export default function Sidebar() {
       });
     } catch (error) {
       console.error("Error cerrando sesión:", error);
-      alert("No fue posible cerrar sesión.");
+      mostrarAviso("No fue posible cerrar sesión.");
     }
   };
 

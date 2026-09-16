@@ -1,3 +1,4 @@
+import { normalizarColegio } from "../utils/colegios";
 import { supabase } from "../lib/supabase";
 
 export const obtenerSalas = async () => {
@@ -14,5 +15,15 @@ export const obtenerSalas = async () => {
     throw error;
   }
 
-  return data;
+  return (data || [])
+    .map((sala) => ({
+      ...sala,
+      colegio: normalizarColegio(sala.colegio),
+    }))
+    .sort((a, b) =>
+      (a.nombre || "").localeCompare(b.nombre || "", "es", {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
 };
