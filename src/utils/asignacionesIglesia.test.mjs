@@ -99,3 +99,11 @@ test("la sala 7 asignada a esta iglesia va primero; luego orden numérico", () =
   registros[0].activo=false;
   assert.deepEqual(ordenarSalasAsignadas(lista,registros,"i").map(s=>s.id),["2","7","14"]);
 });
+
+test("oculta comedores y Sala 1 sin ocultar Sala 10, 11 o 14", () => {
+  const nombres = ["Comedor", "Comedores", "COMEDORES PRINCIPALES", " Sala 1 ", "Sala 01", "Sala 10", "Sala 11", "Sala 14", "Sala 7"];
+  const lista = nombres.map((nombre, id) => ({id, nombre, tipo_sala:null}));
+  for (const tipo of ["HOMBRE", "MUJER"]) {
+    assert.deepEqual(salasParaGrupo(lista,tipo).map(s=>s.nombre), ["Sala 10", "Sala 11", "Sala 14", "Sala 7"]);
+  }
+});

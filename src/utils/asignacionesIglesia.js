@@ -10,7 +10,11 @@ export function resumenSala(asignaciones, salaId, iglesiaId) {
 }
 
 export function salasParaGrupo(salas, tipo) {
-  return salas.filter((sala) => !sala.tipo_sala || sala.tipo_sala === tipo);
+  return salas.filter((sala) => {
+    const nombre = (sala.nombre || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const excluida = /\bcomedores?\b/i.test(nombre) || /^sala\s*0?1$/i.test(nombre);
+    return !excluida && (!sala.tipo_sala || sala.tipo_sala === tipo);
+  });
 }
 
 export function ordenarSalasAsignadas(salas, asignaciones, iglesiaId) {
