@@ -141,6 +141,10 @@ export default function DetalleSala() {
     );
   }
 
+  const iglesiasAlojadas = (sala.sala_iglesias ?? []).filter(
+    (registro) => Number(registro.cantidad) > 0,
+  );
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* HEADER */}
@@ -256,7 +260,7 @@ export default function DetalleSala() {
         </div>
 
         {/* PERSONAS ASIGNADAS */}
-        {sala.sala_iglesias?.length > 0 && (
+        {iglesiasAlojadas.length > 0 && (
           <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <SectionTitle
               icon={<User size={19} />}
@@ -269,7 +273,7 @@ export default function DetalleSala() {
                 label="Hombres"
                 value={
                   sala.tipo_sala === "HOMBRE"
-                    ? sala.sala_iglesias.reduce(
+                    ? iglesiasAlojadas.reduce(
                         (total, item) => total + Number(item.cantidad || 0),
                         0,
                       )
@@ -281,7 +285,7 @@ export default function DetalleSala() {
                 label="Mujeres"
                 value={
                   sala.tipo_sala === "MUJER"
-                    ? sala.sala_iglesias.reduce(
+                    ? iglesiasAlojadas.reduce(
                         (total, item) => total + Number(item.cantidad || 0),
                         0,
                       )
@@ -291,7 +295,7 @@ export default function DetalleSala() {
 
               <SummaryCard
                 label="Total asignado"
-                value={sala.sala_iglesias.reduce(
+                value={iglesiasAlojadas.reduce(
                   (total, item) => total + Number(item.cantidad || 0),
                   0,
                 )}
@@ -310,9 +314,9 @@ export default function DetalleSala() {
           />
 
           <div className="mt-5">
-            {sala.sala_iglesias?.length > 0 ? (
+            {iglesiasAlojadas.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                {sala.sala_iglesias.map((registro) => (
+                {iglesiasAlojadas.map((registro) => (
                   <div
                     key={registro.id}
                     className="rounded-xl border border-slate-200 p-4"

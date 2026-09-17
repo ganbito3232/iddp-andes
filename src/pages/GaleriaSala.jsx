@@ -6,7 +6,6 @@ import {
   Trash2,
   Upload,
   X,
-  RotateCcw,
 } from "lucide-react";
 
 import { Link, useParams } from "react-router-dom";
@@ -23,8 +22,8 @@ export default function GaleriaSala() {
   // =====================================================
 
   const inputGaleriaRef = useRef(null);
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const inputCamaraRef = useRef(null);
+  const subiendoRef = useRef(false);
 
   // =====================================================
   // ESTADOS
@@ -36,12 +35,6 @@ export default function GaleriaSala() {
   const [loading, setLoading] = useState(true);
   const [subiendo, setSubiendo] = useState(false);
 
-  const [camaraAbierta, setCamaraAbierta] = useState(false);
-
-  // environment = trasera
-  // user = frontal
-  const [camara, setCamara] = useState("environment");
-
   const [fotoSeleccionada, setFotoSeleccionada] = useState(null);
 
   // =====================================================
@@ -51,9 +44,6 @@ export default function GaleriaSala() {
   useEffect(() => {
     cargarDatos();
 
-    return () => {
-      detenerCamara();
-    };
   }, [id]);
 
   const cargarDatos = async () => {
@@ -103,203 +93,9 @@ export default function GaleriaSala() {
     }
   };
 
-  // =====================================================
-  // INICIAR CAMARA
-  // =====================================================
-
-  const iniciarCamara = async (tipoCamara = "environment") => {
-    try {
-      // Detener cámara anterior
-      detenerCamara();
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Este navegador no permite acceder a la cámara.");
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: {
-            ideal: tipoCamara,
-          },
-          width: {
-            ideal: 1920,
-          },
-          height: {
-            ideal: 1080,
-          },
-        },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-
-      setCamara(tipoCamara);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-
-        try {
-          await videoRef.current.play();
-        } catch (error) {
-          console.warn("No se pudo reproducir automáticamente:", error);
-        }
-      }
-    } catch (error) {
-      console.error("Error iniciando cámara:", error);
-
-      throw error;
-    }
-  };
-
-  // =====================================================
-  // ABRIR CAMARA
-  // =====================================================
-
-  const abrirCamara = async () => {
-    try {
-      // Siempre comenzar con cámara trasera
-      setCamara("environment");
-
-      setCamaraAbierta(true);
-
-      // Esperar que React monte el <video>
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      await iniciarCamara("environment");
-    } catch (error) {
-      console.error("Error accediendo a cámara:", error);
-
-      detenerCamara();
-
-      setCamaraAbierta(false);
-
-      let mensaje = "No fue posible acceder a la cámara.";
-
-      if (error?.name === "NotAllowedError") {
-        mensaje =
-          "Permiso de cámara denegado. Autoriza la cámara en el navegador.";
-      } else if (error?.name === "NotFoundError") {
-        mensaje = "No se encontró ninguna cámara en este dispositivo.";
-      } else if (error?.name === "NotReadableError") {
-        mensaje = "La cámara está siendo utilizada por otra aplicación.";
-      } else if (error?.name === "SecurityError") {
-        mensaje =
-          "El navegador bloqueó la cámara. La aplicación debe ejecutarse mediante HTTPS.";
-      } else if (error?.message) {
-        mensaje = error.message;
-      }
-
-      mostrarAviso(mensaje);
-    }
-  };
-
-  // =====================================================
-  // CAMBIAR CAMARA
-  // =====================================================
-
-  const cambiarCamara = async () => {
-    const nuevaCamara = camara === "environment" ? "user" : "environment";
-
-    try {
-      await iniciarCamara(nuevaCamara);
-    } catch (error) {
-      console.error("Error cambiando cámara:", error);
-
-      mostrarAviso("No fue posible cambiar de cámara.");
-    }
-  };
-
-  // =====================================================
-  // TOMAR FOTO
-  // =====================================================
-
-  const tomarFoto = async () => {
-    try {
-      const video = videoRef.current;
-
-      if (!video) {
-        mostrarAviso("La cámara no está disponible.");
-        return;
-      }
-
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        mostrarAviso("La cámara todavía no está lista. Espera un momento.", "warning");
-        return;
-      }
-
-      const canvas = document.createElement("canvas");
-
-      canvas.width = video.videoWidth;
-
-      canvas.height = video.videoHeight;
-
-      const contexto = canvas.getContext("2d");
-
-      if (!contexto) {
-        throw new Error("No fue posible crear la imagen.");
-      }
-
-      // Si es frontal, guardar la imagen
-      // como espejo, igual que una selfie.
-      if (camara === "user") {
-        contexto.translate(canvas.width, 0);
-
-        contexto.scale(-1, 1);
-      }
-
-      contexto.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      canvas.toBlob(
-        async (blob) => {
-          if (!blob) {
-            mostrarAviso("No fue posible generar la fotografía.");
-            return;
-          }
-
-          const archivo = new File([blob], `foto-${crypto.randomUUID()}.jpg`, {
-            type: "image/jpeg",
-          });
-
-          await subirFotos([archivo]);
-
-          cerrarCamara();
-        },
-        "image/jpeg",
-        0.9,
-      );
-    } catch (error) {
-      console.error("Error tomando fotografía:", error);
-
-      mostrarAviso("No fue posible tomar la fotografía.");
-    }
-  };
-
-  // =====================================================
-  // DETENER CAMARA
-  // =====================================================
-
-  const detenerCamara = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        track.stop();
-      });
-
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  // =====================================================
-  // CERRAR CAMARA
-  // =====================================================
-
-  const cerrarCamara = () => {
-    detenerCamara();
-
-    setCamaraAbierta(false);
+  // Usar la cámara nativa evita depender de un stream de video del navegador.
+  const abrirCamara = () => {
+    if (!subiendoRef.current) inputCamaraRef.current?.click();
   };
 
   // =====================================================
@@ -307,9 +103,11 @@ export default function GaleriaSala() {
   // =====================================================
 
   const subirFotos = async (archivos) => {
-    if (!archivos || archivos.length === 0) {
+    if (subiendoRef.current || !archivos || archivos.length === 0) {
       return;
     }
+
+    subiendoRef.current = true;
 
     try {
       setSubiendo(true);
@@ -321,7 +119,12 @@ export default function GaleriaSala() {
 
         const extension = archivo.name.split(".").pop()?.toLowerCase() || "jpg";
 
-        const nombreArchivo = `${crypto.randomUUID()}.${extension}`;
+        // También funciona al acceder por HTTP desde la red local.
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        const identificador = Array.from(bytes, (byte) =>
+          byte.toString(16).padStart(2, "0"),
+        ).join("");
+        const nombreArchivo = identificador + "." + extension;
 
         const ruta = `${id}/galeria/${nombreArchivo}`;
 
@@ -376,7 +179,10 @@ export default function GaleriaSala() {
 
       mostrarAviso(error?.message || "No fue posible subir las fotos.");
     } finally {
+      subiendoRef.current = false;
       setSubiendo(false);
+
+      if (inputCamaraRef.current) inputCamaraRef.current.value = "";
 
       if (inputGaleriaRef.current) {
         inputGaleriaRef.current.value = "";
@@ -546,6 +352,17 @@ export default function GaleriaSala() {
             </button>
           </div>
 
+          <input
+            ref={inputCamaraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={manejarGaleria}
+            disabled={subiendo}
+            aria-label="Tomar fotografía con la cámara"
+          />
+
           {/* INPUT SOLO PARA GALERIA */}
 
           <input
@@ -561,6 +378,12 @@ export default function GaleriaSala() {
         {/* ================================================= */}
         {/* GALERIA VACIA */}
         {/* ================================================= */}
+
+        {subiendo && (
+          <p role="status" className="mb-4 text-sm font-medium text-slate-600">
+            Guardando fotografías...
+          </p>
+        )}
 
         {fotos.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center sm:p-16">
@@ -581,6 +404,7 @@ export default function GaleriaSala() {
               <button
                 type="button"
                 onClick={abrirCamara}
+                disabled={subiendo}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
               >
                 <Camera size={18} />
@@ -590,6 +414,7 @@ export default function GaleriaSala() {
               <button
                 type="button"
                 onClick={() => inputGaleriaRef.current?.click()}
+                disabled={subiendo}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
               >
                 <Upload size={18} />
@@ -670,84 +495,6 @@ export default function GaleriaSala() {
         </div>
       )}
 
-      {/* ================================================= */}
-      {/* CAMARA */}
-      {/* ================================================= */}
-
-      {camaraAbierta && (
-        <div className="fixed inset-0 z-[100] bg-black">
-          {/* VIDEO */}
-
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className={`h-full w-full object-cover ${
-              camara === "user" ? "-scale-x-100" : ""
-            }`}
-          />
-
-          {/* =========================================== */}
-          {/* BARRA SUPERIOR */}
-          {/* =========================================== */}
-
-          <div className="absolute left-0 right-0 top-0 flex items-center justify-between p-4">
-            {/* CERRAR */}
-
-            <button
-              type="button"
-              onClick={cerrarCamara}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur"
-            >
-              <X size={22} />
-            </button>
-
-            {/* TEXTO */}
-
-            <div className="rounded-full bg-black/50 px-4 py-2 text-sm font-medium text-white backdrop-blur">
-              {camara === "environment" ? "Cámara trasera" : "Cámara frontal"}
-            </div>
-
-            {/* CAMBIAR */}
-
-            <button
-              type="button"
-              onClick={cambiarCamara}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur"
-              title="Cambiar cámara"
-            >
-              <RotateCcw size={21} />
-            </button>
-          </div>
-
-          {/* =========================================== */}
-          {/* BOTON CAPTURA */}
-          {/* =========================================== */}
-
-          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center bg-gradient-to-t from-black/80 to-transparent p-8 pb-10">
-            <button
-              type="button"
-              onClick={tomarFoto}
-              disabled={subiendo}
-              className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-white shadow-2xl disabled:opacity-50"
-              title="Tomar fotografía"
-            >
-              <div className="h-14 w-14 rounded-full border-2 border-slate-300 bg-white" />
-            </button>
-          </div>
-
-          {/* =========================================== */}
-          {/* SUBIENDO */}
-          {/* =========================================== */}
-
-          {subiendo && (
-            <div className="absolute bottom-32 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-5 py-2 text-sm font-medium text-white backdrop-blur">
-              Guardando fotografía...
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

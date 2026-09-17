@@ -785,18 +785,27 @@ export default function EditarSala() {
         relacionesDeseadas.map((item) => String(item.iglesia_id)),
       );
 
-      // Eliminar relaciones que quedaron en 0
-      const relacionesAEliminar = relacionesActuales.filter(
+      // Conservar la relación y guardar explícitamente 0. Borrarla requiere
+      // permisos DELETE y puede no afectar filas sin devolver un error RLS.
+      const relacionesEnCero = relacionesActuales.filter(
         (item) => !idsDeseados.has(String(item.iglesia_id)),
       );
 
-      for (const relacion of relacionesAEliminar) {
+      for (const relacion of relacionesEnCero) {
         const { error } = await supabase
           .from("sala_iglesias")
-          .delete()
-          .eq("id", relacion.id);
+          .update({ cantidad: 0 })
+          .eq("id", relacion.id)
+          .eq("sala_id", id)
+          .select("id")
+          .single();
 
-        if (error) throw error;
+        if (error) {
+          throw new Error(
+            "No se pudo guardar la cantidad en 0. Revisa los permisos de actualización de sala_iglesias. " +
+              error.message,
+          );
+        }
       }
 
       // Actualizar o insertar.
@@ -815,7 +824,10 @@ export default function EditarSala() {
               observacion: relacion.observacion,
               activo: true,
             })
-            .eq("id", existente.id);
+            .eq("id", existente.id)
+            .eq("sala_id", id)
+            .select("id")
+            .single();
 
           if (error) throw error;
         } else {
