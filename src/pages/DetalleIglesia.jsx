@@ -18,6 +18,7 @@ import {
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { supabase } from "../lib/supabase";
+import AsignarIglesiaSalas from "../components/AsignarIglesiaSalas";
 
 export default function DetalleIglesia() {
   const { id } = useParams();
@@ -179,6 +180,7 @@ export default function DetalleIglesia() {
         </div>
 
         <div className="space-y-5">
+          <AsignarIglesiaSalas key={id} iglesiaId={id} activa={iglesia.activo} />
           {/* =====================================================
               INFORMACIÓN PRINCIPAL
           ===================================================== */}
