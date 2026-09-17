@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resumenAsignacion, resumenSala, validarAsignacion, salasParaGrupo, validarRetiro } from "./asignacionesIglesia.js";
+import { resumenAsignacion, resumenSala, validarAsignacion, salasParaGrupo, validarRetiro, ordenarSalasAsignadas } from "./asignacionesIglesia.js";
 
 const iglesia = { id: "i", mujeres: 10, hombres: 8, activo: true };
 const salas = [
@@ -86,4 +86,16 @@ test("no permite quitar personas ajenas, cantidades excesivas, inactivas o invá
   for (const cantidad of [0, -1, 1.5, NaN, 4]) assert.throws(() => validarRetiro(asignaciones, "m1", "i", cantidad));
   assert.throws(() => validarRetiro(asignaciones, "m1", "sin-asignacion", 1));
   assert.throws(() => validarRetiro(asignaciones, "m2", "i", 1));
+});
+
+test("la sala 7 asignada a esta iglesia va primero; luego orden numérico", () => {
+  const lista = [{id:"14",nombre:"Sala 14"},{id:"2",nombre:"Sala 2"},{id:"7",nombre:"Sala 7"}];
+  const registros = [{sala_id:"7",iglesia_id:"i",cantidad:2},{sala_id:"14",iglesia_id:"otra",cantidad:10}];
+  assert.deepEqual(ordenarSalasAsignadas(lista,registros,"i").map(s=>s.id),["7","2","14"]);
+  assert.equal(lista[0].id,"14");
+  registros[0].cantidad=0;
+  assert.deepEqual(ordenarSalasAsignadas(lista,registros,"i").map(s=>s.id),["2","7","14"]);
+  registros[0].cantidad=2;
+  registros[0].activo=false;
+  assert.deepEqual(ordenarSalasAsignadas(lista,registros,"i").map(s=>s.id),["2","7","14"]);
 });

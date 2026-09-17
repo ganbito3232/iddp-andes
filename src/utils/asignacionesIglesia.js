@@ -13,6 +13,17 @@ export function salasParaGrupo(salas, tipo) {
   return salas.filter((sala) => !sala.tipo_sala || sala.tipo_sala === tipo);
 }
 
+export function ordenarSalasAsignadas(salas, asignaciones, iglesiaId) {
+  const asignadas = new Set(asignaciones
+    .filter((item) => String(item.iglesia_id) === String(iglesiaId)
+      && item.activo !== false && Number(item.cantidad) > 0)
+    .map((item) => String(item.sala_id)));
+  return [...salas].sort((a, b) =>
+    Number(asignadas.has(String(b.id))) - Number(asignadas.has(String(a.id)))
+    || (a.nombre || a.codigo || "").localeCompare(b.nombre || b.codigo || "", "es", { numeric: true }),
+  );
+}
+
 export function validarRetiro(asignaciones, salaId, iglesiaId, cantidad) {
   if (!Number.isSafeInteger(cantidad) || cantidad <= 0) {
     throw new Error("Ingresa un número entero mayor que 0 para quitar.");

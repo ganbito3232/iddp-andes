@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { normalizarColegio } from "../utils/colegios";
-import { resumenAsignacion, resumenSala, puedeAsignarSala, validarAsignacion, salasParaGrupo, validarRetiro } from "../utils/asignacionesIglesia";
+import { resumenAsignacion, resumenSala, puedeAsignarSala, validarAsignacion, salasParaGrupo, validarRetiro, ordenarSalasAsignadas } from "../utils/asignacionesIglesia";
 import { asignarTipoSala } from "../services/asignarTipoSala";
 
 async function cargarAsignaciones(iglesiaId) {
@@ -140,9 +140,13 @@ export default function AsignarIglesiaSalas({ iglesiaId, activa }) {
     }
   }
 
-  const salasVisibles = salasParaGrupo(datos?.salas || [], tipo);
+  const salasVisibles = ordenarSalasAsignadas(salasParaGrupo(datos?.salas || [], tipo), datos?.asignaciones || [], iglesiaId);
   const nombreColegio = (sala) => normalizarColegio(sala.colegio) || "Sin colegio";
   const colegios = [...new Set((datos?.salas || []).map(nombreColegio))].sort((a, b) => a.localeCompare(b, "es"));
+  const colegiosAsignados = new Set(salasVisibles
+    .filter((sala) => resumenSala(datos.asignaciones, sala.id, iglesiaId).deEstaIglesia > 0)
+    .map(nombreColegio));
+  const colegiosOrdenados = [...colegios].sort((a, b) => Number(colegiosAsignados.has(b)) - Number(colegiosAsignados.has(a)));
   const resumen = datos ? resumenAsignacion(datos.iglesia, datos.salas, datos.asignaciones, tipo) : null;
   const grupo = tipo === "MUJER" ? "mujeres" : "hombres";
 
@@ -169,14 +173,27 @@ export default function AsignarIglesiaSalas({ iglesiaId, activa }) {
           <p>Disponibles<strong className="block text-xl">{resumen.disponibles}</strong></p>
         </div>
         {resumen.disponibles === 0 && <p className="mb-4 text-sm text-slate-600">No quedan {grupo} disponibles para asignar.</p>}
-        <label className="block text-sm font-semibold">Colegio
-          <select value={colegio} onChange={(event) => setColegio(event.target.value)} disabled={ocupado}
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3">
-            <option value="">Todos los colegios</option>
-            {colegios.map((nombre) => <option key={nombre} value={nombre}>{nombre}</option>)}
-          </select>
-        </label>
-        {colegios.filter((nombre) => !colegio || nombre === colegio).map((nombre) => (
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Colegio</p>
+          <div role="group" aria-label="Filtrar salas por colegio"
+            className="mt-3 flex gap-2 overflow-x-auto rounded-2xl bg-slate-100 p-2">
+            {[{ valor: "", nombre: "Todos" }, ...colegios.map((nombre) => ({ valor: nombre, nombre }))].map((opcion) => {
+              const seleccionado = colegio === opcion.valor;
+              const cantidadSalas = salasVisibles.filter((sala) => !opcion.valor || nombreColegio(sala) === opcion.valor).length;
+              return (
+                <button key={opcion.valor} type="button" aria-pressed={seleccionado}
+                  disabled={ocupado} onClick={() => setColegio(opcion.valor)}
+                  className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:opacity-50 sm:flex-1 ${seleccionado ? "bg-slate-900 text-white shadow-sm" : "text-slate-600 hover:bg-white hover:text-slate-900"}`}>
+                  {opcion.nombre}
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${seleccionado ? "bg-white/15 text-white" : "bg-white text-slate-500"}`}>
+                    {cantidadSalas}<span className="sr-only"> salas</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {colegiosOrdenados.filter((nombre) => !colegio || nombre === colegio).map((nombre) => (
           <div key={nombre} className="mt-6">
             <h3 className="font-semibold text-slate-800">{nombre}</h3>
             {!salasVisibles.some((sala) => nombreColegio(sala) === nombre) && <p className="mt-3 text-sm text-slate-500">No hay salas de {grupo} ni salas sin tipo definido en este colegio.</p>}
